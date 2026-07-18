@@ -1,75 +1,61 @@
-# React + TypeScript + Vite
+# Expense Tracker — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript frontend for tracking personal expenses. Lets you add an
+expense (description, amount, date, category) and view the running list.
 
-Currently, two official plugins are available:
+Built with:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- [React 19](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vite.dev/) — dev server and build tool
+- [Tailwind CSS 4](https://tailwindcss.com/) — styling
 
-## React Compiler
+This is the frontend only. It expects a backend REST API running at
+`http://localhost:8080` (see [Backend](#backend) below).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Prerequisites
 
-## Expanding the ESLint configuration
+- [Node.js](https://nodejs.org/) 20+ and npm
+- A running instance of the expense tracker backend API
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+This starts the Vite dev server (default: `http://localhost:5173`) with hot
+module reloading.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Available scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Command           | Description                                      |
+| ------------------ | ------------------------------------------------- |
+| `npm run dev`     | Start the local dev server                       |
+| `npm run build`   | Type-check and build for production into `dist/` |
+| `npm run preview` | Preview the production build locally             |
+| `npm run lint`    | Run ESLint                                       |
 
+## Backend
+
+The app calls two REST endpoints on `http://localhost:8080`:
+
+- `GET /api/expenses` — list expenses
+- `POST /api/expenses` — create an expense
+- `GET /api/categories` — list categories
+
+The backend URL is currently hardcoded in `src/App.tsx`. Make sure the
+backend is running locally before starting the dev server, or the app will
+show a loading/error state.
+
+## Project structure
+
+```
+src/
+  App.tsx       # Main view: expense form + expense list
+  types.ts      # Shared TypeScript types (Expense, Category)
+  main.tsx      # App entry point
+  index.css     # Tailwind entry point
+public/         # Static assets served as-is
 ```
