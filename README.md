@@ -38,8 +38,9 @@ module reloading.
 | `npm run lint`    | Run ESLint                                       |
 
 ## Backend
+The backend REST API for this project is a separate repository: [expense-tracker-api](https://github.com/roberttanjr19/expense-tracker-api) (Spring Boot + Java).
 
-The app calls two REST endpoints on `http://localhost:8080`:
+The app calls these REST endpoints on `http://localhost:8080`:
 
 - `GET /api/expenses` — list expenses
 - `POST /api/expenses` — create an expense
