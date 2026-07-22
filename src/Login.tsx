@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { API_BASE, extractErrorMessage } from "./api";
+import SampleLedger from "./SampleLedger";
 
 type Mode = "login" | "register";
 
 interface LoginProps {
   onLogin: (token: string) => void;
 }
+
+const inputClasses =
+  "h-10 w-full rounded border border-rule bg-paper px-3 text-[15px] text-ink placeholder:text-dim " +
+  "focus:outline-none focus-visible:outline focus-visible:outline-2 " +
+  "focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+const linkButtonClasses =
+  "underline underline-offset-2 text-dim hover:text-ink " +
+  "focus:outline-none focus-visible:outline focus-visible:outline-2 " +
+  "focus-visible:outline-offset-2 focus-visible:outline-ink";
 
 function Login({ onLogin }: LoginProps) {
   const [mode, setMode] = useState<Mode>("login");
@@ -54,78 +65,124 @@ function Login({ onLogin }: LoginProps) {
     }
   }
 
+  function toggleMode() {
+    setError("");
+    setMode(mode === "login" ? "register" : "login");
+  }
+
   return (
-    <div className="max-w-sm mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Expenses</h1>
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <header className="border-b border-rule px-4 py-4 sm:px-6 sm:py-5">
+        <span className="text-[16px] font-medium">Daybook</span>
+      </header>
 
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm space-y-3"
-      >
-        <h2 className="text-lg font-semibold text-gray-900">
-          {mode === "login" ? "Log in" : "Create an account"}
-        </h2>
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center px-4 py-16 sm:py-20">
+        <div className="login-scope flex w-full flex-col items-center">
+          <div className="w-full max-w-[520px] text-center">
+            <p className="eyebrow">Expense tracker</p>
+            <h1 className="mt-4 text-[clamp(28px,5vw,38px)] font-medium leading-[1.15]">
+              Every dollar, on one line.
+            </h1>
+            <p className="mt-3 text-[17px] text-dim">Know where it went.</p>
+          </div>
 
-        {mode === "register" && (
-          <input
-            type="text"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full rounded border border-gray-300 p-2"
-          />
-        )}
+          <form
+            onSubmit={handleSubmit}
+            className="mt-12 w-full max-w-[340px] space-y-3"
+          >
+            <h2 className="sr-only">
+              {mode === "login" ? "Sign in" : "Create an account"}
+            </h2>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full rounded border border-gray-300 p-2"
-        />
+            {mode === "register" && (
+              <div>
+                <label htmlFor="name" className="sr-only">
+                  Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  placeholder="Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className={inputClasses}
+                />
+              </div>
+            )}
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full rounded border border-gray-300 p-2"
-        />
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={inputClasses}
+              />
+            </div>
 
-        {error && (
-          <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className={inputClasses}
+              />
+            </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded bg-blue-600 p-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting
-            ? "Please wait..."
-            : mode === "login"
-            ? "Log in"
-            : "Register"}
-        </button>
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
 
-        <button
-          type="button"
-          onClick={() => {
-            setError("");
-            setMode(mode === "login" ? "register" : "login");
-          }}
-          className="w-full text-sm text-blue-600 hover:underline"
-        >
-          {mode === "login"
-            ? "Need an account? Register"
-            : "Already have an account? Log in"}
-        </button>
-      </form>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="h-10 w-full rounded bg-ink px-4 text-[15px] font-medium text-paper hover:opacity-90 disabled:opacity-50 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              {submitting
+                ? "Please wait…"
+                : mode === "login"
+                ? "Sign in"
+                : "Create account"}
+            </button>
+
+            <p className="text-center text-[14px] text-dim">
+              {mode === "login" ? (
+                <>
+                  No account?{" "}
+                  <button type="button" onClick={toggleMode} className={linkButtonClasses}>
+                    Create one
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have one?{" "}
+                  <button type="button" onClick={toggleMode} className={linkButtonClasses}>
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
+          </form>
+
+          <div className="mt-16 w-full max-w-[520px] border-t border-rule pt-6">
+            <SampleLedger />
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

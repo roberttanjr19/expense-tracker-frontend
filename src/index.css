@@ -1,1 +1,98 @@
 @import "tailwindcss";
+
+/*
+ * Design tokens, defined once as CSS custom properties and mapped into
+ * Tailwind's theme via @theme. Tailwind then generates utilities like
+ * bg-paper / text-ink / border-rule that resolve to var(--color-*) under
+ * the hood — so overriding the variable's value for dark mode (below)
+ * re-colors every utility that uses it, with no per-component dark:
+ * variants needed anywhere.
+ */
+@theme {
+  --color-paper: #FAFAF9;
+  --color-band: #EEEEEC;
+  --color-ink: #1C1C1A;
+  --color-dim: #6A6965;
+  --color-rule: #C8C7C2;
+  --color-accent: #0F6E56;
+  --color-chip: #E4E4E1;
+  --color-danger: #993C1D;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+/*
+ * Dark theme: same variable names, different values, scoped under the
+ * data-theme attribute that theme.ts sets on <html>. :root[data-theme]
+ * has the same specificity as Tailwind's plain :root block above, so it
+ * must come after it in source order to win the cascade.
+ */
+:root[data-theme="dark"] {
+  --color-paper: #121211;
+  --color-band: #1A1A18;
+  --color-ink: #E4E4E1;
+  --color-dim: #8A8A85;
+  --color-rule: #302F2C;
+  --color-accent: #5DCAA5;
+  --color-chip: #232321;
+  --color-danger: #F0997B;
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+}
+
+@layer components {
+  /* 12px uppercase label style. Source text stays sentence case in JSX;
+     text-transform does the uppercasing so screen readers still hear it
+     as written. */
+  .eyebrow {
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-dim);
+  }
+
+  /* Paired with SampleLedger's .ledger-feed-track: :focus-within on this
+     wrapper covers the form's inputs even though the animated track lives
+     in a sibling component, so no focus state needs threading through props. */
+  .login-scope:focus-within .ledger-feed-track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes ledger-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    /* The row list below is rendered twice back-to-back, so -50% is exactly
+       one copy's height: the moment it's scrolled past, the second (identical)
+       copy sits where the first started, and the loop restarts invisibly. */
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

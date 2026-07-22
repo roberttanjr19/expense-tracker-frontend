@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import type { Category, Expense } from "./types";
+import type { Category, Expense, User } from "./types";
 import Login from "./Login";
 import { authFetch, extractErrorMessage } from "./api";
+import ExpenseRow, { type ExpensePayload } from "./ExpenseRow";
+import CategoryRow from "./CategoryRow";
 
 function App() {
   const [token, setToken] = useState<string | null>(() =>
@@ -27,6 +29,26 @@ function App() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState("");
 
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
+  const [savingExpenseEdit, setSavingExpenseEdit] = useState(false);
+  const [expenseEditError, setExpenseEditError] = useState("");
+
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
+    null
+  );
+  const [renamingCategoryId, setRenamingCategoryId] = useState<number | null>(
+    null
+  );
+  const [deletingCategoryId, setDeletingCategoryId] = useState<number | null>(
+    null
+  );
+  const [categoryRowError, setCategoryRowError] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
   function handleLogin(newToken: string) {
     localStorage.setItem("token", newToken);
     setToken(newToken);
@@ -35,6 +57,7 @@ function App() {
   function handleLogout() {
     localStorage.removeItem("token");
     setToken(null);
+    setCurrentUser(null);
   }
 
   async function loadExpenses(authToken: string) {
@@ -74,11 +97,27 @@ function App() {
     }
   }
 
+  async function loadCurrentUser(authToken: string) {
+    try {
+      const response = await authFetch(authToken, "/api/users/me", handleLogout);
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
+      const data: User = await response.json();
+      setCurrentUser(data);
+    } catch (err) {
+      // Non-401 failures here shouldn't block the rest of the app, same as
+      // loadCategories below — the header just won't show a name.
+      console.error("Failed to load current user:", err);
+    }
+  }
+
   useEffect(() => {
     if (!token) return;
 
     loadExpenses(token);
     loadCategories(token);
+    loadCurrentUser(token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -183,6 +222,105 @@ function App() {
     }
   }
 
+  async function handleSaveExpenseEdit(id: number, payload: ExpensePayload) {
+    if (!token) return;
+
+    setExpenseEditError("");
+    setSavingExpenseEdit(true);
+
+    try {
+      const response = await authFetch(token, `/api/expenses/${id}`, handleLogout, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
+
+      setEditingExpenseId(null);
+      loadExpenses(token);
+    } catch (err) {
+      // Leave editingExpenseId set so the row stays open with what the
+      // user typed, and show the backend's message inline.
+      setExpenseEditError(
+        err instanceof Error ? err.message : "Failed to update expense."
+      );
+    } finally {
+      setSavingExpenseEdit(false);
+    }
+  }
+
+  async function handleRenameCategory(id: number, name: string) {
+    if (!token) return;
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setCategoryRowError({ id, message: "Category name can't be empty." });
+      return;
+    }
+
+    setCategoryRowError(null);
+    setRenamingCategoryId(id);
+
+    try {
+      const response = await authFetch(token, `/api/categories/${id}`, handleLogout, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
+
+      setEditingCategoryId(null);
+      // Refetch both: categories for the dropdown/list, expenses because
+      // each expense embeds its category's current name.
+      loadCategories(token);
+      loadExpenses(token);
+    } catch (err) {
+      setCategoryRowError({
+        id,
+        message: err instanceof Error ? err.message : "Failed to rename category.",
+      });
+    } finally {
+      setRenamingCategoryId(null);
+    }
+  }
+
+  async function handleDeleteCategory(id: number) {
+    if (!token) return;
+    if (!window.confirm("Delete this category?")) return;
+
+    setCategoryRowError(null);
+    setDeletingCategoryId(id);
+
+    try {
+      const response = await authFetch(token, `/api/categories/${id}`, handleLogout, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        // Expected case: the category still has expenses attached. The
+        // backend's message explains that, so we just surface it as-is
+        // instead of a generic error.
+        throw new Error(await extractErrorMessage(response));
+      }
+
+      loadCategories(token);
+      loadExpenses(token);
+    } catch (err) {
+      setCategoryRowError({
+        id,
+        message: err instanceof Error ? err.message : "Failed to delete category.",
+      });
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  }
+
   if (!token) {
     return <Login onLogin={handleLogin} />;
   }
@@ -191,12 +329,19 @@ function App() {
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Expenses</h1>
-        <button
-          onClick={handleLogout}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-3">
+          {currentUser && (
+            <span className="text-sm text-gray-600">
+              {currentUser.name || currentUser.email}
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <form
@@ -230,6 +375,38 @@ function App() {
           {addingCategory ? "Adding..." : "Add category"}
         </button>
       </form>
+
+      {categories.length > 0 && (
+        <div className="mb-8 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">
+            Your categories
+          </h3>
+          {categories.map((category) => (
+            <CategoryRow
+              key={category.id}
+              category={category}
+              isEditing={editingCategoryId === category.id}
+              saving={renamingCategoryId === category.id}
+              deleting={deletingCategoryId === category.id}
+              error={
+                categoryRowError?.id === category.id
+                  ? categoryRowError.message
+                  : ""
+              }
+              onStartEdit={() => {
+                setEditingCategoryId(category.id);
+                setCategoryRowError(null);
+              }}
+              onCancelEdit={() => {
+                setEditingCategoryId(null);
+                setCategoryRowError(null);
+              }}
+              onSave={handleRenameCategory}
+              onDelete={handleDeleteCategory}
+            />
+          ))}
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit}
@@ -377,32 +554,25 @@ function App() {
       ) : (
         <div className="space-y-3">
           {expenses.map((expense) => (
-            <div
+            <ExpenseRow
               key={expense.id}
-              className="flex justify-between items-center rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-            >
-              <div>
-                <p className="font-medium text-gray-900">
-                  {expense.description}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {expense.category.name} &middot; {expense.expenseDate}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <p className="text-lg font-semibold text-gray-900">
-                  ${expense.amount.toFixed(2)}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteExpense(expense.id)}
-                  disabled={deletingId === expense.id}
-                  className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline disabled:opacity-50 disabled:no-underline"
-                >
-                  {deletingId === expense.id ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            </div>
+              expense={expense}
+              categories={categories}
+              isEditing={editingExpenseId === expense.id}
+              saving={savingExpenseEdit}
+              editError={editingExpenseId === expense.id ? expenseEditError : ""}
+              deleting={deletingId === expense.id}
+              onStartEdit={() => {
+                setEditingExpenseId(expense.id);
+                setExpenseEditError("");
+              }}
+              onCancelEdit={() => {
+                setEditingExpenseId(null);
+                setExpenseEditError("");
+              }}
+              onSave={handleSaveExpenseEdit}
+              onDelete={handleDeleteExpense}
+            />
           ))}
         </div>
       )}
