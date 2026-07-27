@@ -9,6 +9,13 @@ export interface User {
   email: string;
 }
 
+export interface MonthSummary {
+  year: number;
+  month: number; // 1-12
+  total: number;
+  count: number;
+}
+
 export interface Expense {
   id: number;
   amount: number;

@@ -17,6 +17,7 @@
   --color-accent: #0F6E56;
   --color-chip: #E4E4E1;
   --color-danger: #993C1D;
+  --color-role-selected: #F2F1EC;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
@@ -41,6 +42,10 @@
   --color-accent: #5DCAA5;
   --color-chip: #232321;
   --color-danger: #F0997B;
+  /* "Subtle raised" rather than a distinct light-mode swatch: reuse the
+     existing band token so a selected role card just looks lifted, not
+     recolored. */
+  --color-role-selected: var(--color-band);
   color-scheme: dark;
 }
 
@@ -68,11 +73,22 @@
     color: var(--color-dim);
   }
 
-  /* Paired with SampleLedger's .ledger-feed-track: :focus-within on this
+  /* Paired with AuthPanel's .ledger-feed-track: :focus-within on this
      wrapper covers the form's inputs even though the animated track lives
      in a sibling component, so no focus state needs threading through props. */
   .login-scope:focus-within .ledger-feed-track {
     animation-play-state: paused;
+  }
+
+  /* Bottom fade for AuthPanel's ledger feed: hard-clips at the container's
+     overflow but softens the last row into the panel background instead of
+     cutting it off mid-row. */
+  .ledger-feed-fade {
+    pointer-events: none;
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 28px;
+    background: linear-gradient(to top, #161613, transparent);
   }
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { API_BASE, extractErrorMessage } from "./api";
 import SampleLedger from "./SampleLedger";
+import RolePicker, { type Role } from "./RolePicker";
 
 type Mode = "login" | "register";
 
@@ -21,6 +22,7 @@ const linkButtonClasses =
 function Login({ onLogin }: LoginProps) {
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<Role>("PERSONAL");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -36,7 +38,7 @@ function Login({ onLogin }: LoginProps) {
         const registerResponse = await fetch(`${API_BASE}/api/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
+          body: JSON.stringify({ name, email, password, role }),
         });
         if (!registerResponse.ok) {
           throw new Error(await extractErrorMessage(registerResponse));
@@ -110,6 +112,8 @@ function Login({ onLogin }: LoginProps) {
                 />
               </div>
             )}
+
+            {mode === "register" && <RolePicker value={role} onChange={setRole} />}
 
             <div>
               <label htmlFor="email" className="sr-only">
