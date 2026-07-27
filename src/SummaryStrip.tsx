@@ -19,7 +19,7 @@ function SummaryStrip({
 }: SummaryStripProps) {
   return (
     <section className="border-y border-rule">
-      <div className="mx-auto grid max-w-3xl grid-cols-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3">
         <div className="px-4 py-6 text-center sm:px-6">
           <p className="eyebrow">Spent</p>
           <p className="mt-1 font-mono text-[22px] tabular-nums">{spentLabel}</p>

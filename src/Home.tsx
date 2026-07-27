@@ -132,9 +132,7 @@ function Home({ token, onLogout }: HomeProps) {
     }
   }
 
-  async function handleAddCategory(e: React.FormEvent) {
-    e.preventDefault();
-
+  async function handleAddCategory() {
     const trimmedName = categoryName.trim();
     if (!trimmedName) {
       setCategoryError("Category name can't be empty.");
@@ -201,6 +199,11 @@ function Home({ token, onLogout }: HomeProps) {
 
   const recentExpenses = useMemo(() => [...expenses].slice(-4).reverse(), [expenses]);
 
+  const categoryIconById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.icon])),
+    [categories]
+  );
+
   const otherMonths = monthSummaries.filter((s) => !(s.year === year && s.month === month));
   const visibleMonths = otherMonths.slice(0, 4);
   const hasMoreMonths = otherMonths.length > 4;
@@ -208,14 +211,16 @@ function Home({ token, onLogout }: HomeProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="flex shrink-0 items-center justify-between border-b border-rule px-4 py-4 sm:px-6 sm:py-5">
-        <div>
-          <span className="text-[16px] font-medium">Daybook</span>
-          <p className="eyebrow mt-0.5">
-            {monthLabel} {year}
-          </p>
+      <header className="border-b border-rule">
+        <div className="mx-auto flex w-full max-w-[640px] shrink-0 items-center justify-between px-4 py-4 sm:px-6 sm:py-5 min-[900px]:max-w-[1100px] min-[900px]:px-8">
+          <div>
+            <span className="text-[16px] font-medium">Daybook</span>
+            <p className="eyebrow mt-0.5">
+              {monthLabel} {year}
+            </p>
+          </div>
+          <HeaderMenu onSignOut={onLogout} />
         </div>
-        <HeaderMenu onSignOut={onLogout} />
       </header>
 
       {loading ? (
@@ -232,12 +237,19 @@ function Home({ token, onLogout }: HomeProps) {
           <p className="text-[15px] text-danger">{loadError}</p>
         </div>
       ) : (
-        <main className="flex flex-1 flex-col">
-          <section className="flex min-h-[calc(100dvh-80px)] flex-col items-center justify-center px-4 py-12 sm:min-h-[calc(100dvh-88px)]">
-            <div className="w-full max-w-[360px] text-center">
+        <main className="mx-auto flex w-full max-w-[640px] flex-1 flex-col px-4 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
+          <SummaryStrip
+            spentLabel={formatMoney(monthTotal)}
+            previousMonthName={previousMonthName}
+            vsPreviousLabel={vsPreviousLabel}
+            entryCount={expenses.length}
+          />
+
+          <div className="space-y-8 py-8 min-[900px]:grid min-[900px]:grid-cols-[42%_1fr] min-[900px]:gap-x-10 min-[900px]:space-y-0">
+            <section>
               <p className="eyebrow">What did you spend?</p>
 
-              <form onSubmit={handleAddExpense} className="mt-6 space-y-3 text-left">
+              <form onSubmit={handleAddExpense} className="mt-4 space-y-3 text-left">
                 <div>
                   <label htmlFor="description" className="sr-only">
                     Description
@@ -304,6 +316,70 @@ function Home({ token, onLogout }: HomeProps) {
                   </div>
                 </div>
 
+                <div className="text-[13px]">
+                  {!showAddCategory ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategory(true)}
+                      className={`${linkButtonClasses} text-dim`}
+                    >
+                      + New category
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="categoryName" className="sr-only">
+                        Category name
+                      </label>
+                      <input
+                        id="categoryName"
+                        type="text"
+                        placeholder="Category name"
+                        value={categoryName}
+                        onChange={(e) => {
+                          setCategoryName(e.target.value);
+                          setCategoryError("");
+                        }}
+                        onKeyDown={(e) => {
+                          // This input lives inside the outer add-expense
+                          // <form>, so an unhandled Enter would implicitly
+                          // submit THAT form (a nested <form> here would be
+                          // invalid HTML). Intercept it and run the
+                          // category-add logic directly instead.
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCategory();
+                          }
+                        }}
+                        className={`${inputClasses} h-9 text-[14px]`}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCategory}
+                        disabled={addingCategory}
+                        className="h-9 shrink-0 rounded border border-rule px-3 text-[13px] text-ink hover:bg-band disabled:opacity-50 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                      >
+                        {addingCategory ? "Adding…" : "Add"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddCategory(false);
+                          setCategoryName("");
+                          setCategoryError("");
+                        }}
+                        className={`${linkButtonClasses} text-dim`}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {categoryError && (
+                    <p role="alert" className="mt-1 text-danger">
+                      {categoryError}
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label htmlFor="expenseDate" className="sr-only">
                     Date
@@ -335,88 +411,15 @@ function Home({ token, onLogout }: HomeProps) {
                   {submitting ? "Adding…" : "Add entry"}
                 </button>
               </form>
+            </section>
 
-              {categories.length === 0 && (
-                <div className="mt-4 text-sm">
-                  {!showAddCategory ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCategory(true)}
-                      className={`${linkButtonClasses} text-dim`}
-                    >
-                      Add a category first
-                    </button>
-                  ) : (
-                    <form
-                      onSubmit={handleAddCategory}
-                      className="flex items-center gap-2 text-left"
-                    >
-                      <label htmlFor="categoryName" className="sr-only">
-                        Category name
-                      </label>
-                      <input
-                        id="categoryName"
-                        type="text"
-                        placeholder="Category name"
-                        value={categoryName}
-                        onChange={(e) => {
-                          setCategoryName(e.target.value);
-                          setCategoryError("");
-                        }}
-                        className={`${inputClasses} h-9`}
-                      />
-                      <button
-                        type="submit"
-                        disabled={addingCategory}
-                        className="h-9 shrink-0 rounded border border-rule px-3 text-sm text-ink hover:bg-band disabled:opacity-50 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                      >
-                        {addingCategory ? "Adding…" : "Add"}
-                      </button>
-                    </form>
-                  )}
-                  {categoryError && (
-                    <p role="alert" className="mt-1 text-danger">
-                      {categoryError}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-8 flex flex-col items-center gap-2 text-rule">
-                <p className="text-sm">
-                  {monthLabel} so far &middot; {formatMoney(monthTotal)}
-                </p>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M3 6L8 11L13 6"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-          </section>
-
-          <SummaryStrip
-            spentLabel={formatMoney(monthTotal)}
-            previousMonthName={previousMonthName}
-            vsPreviousLabel={vsPreviousLabel}
-            entryCount={expenses.length}
-          />
-
-          <LedgerPreview
-            monthLabel={monthLabel}
-            expenses={recentExpenses}
-            onOpenLedger={handleOpenLedger}
-          />
+            <LedgerPreview
+              monthLabel={monthLabel}
+              expenses={recentExpenses}
+              categoryIconById={categoryIconById}
+              onOpenLedger={handleOpenLedger}
+            />
+          </div>
 
           <PreviousMonths
             months={visibleMonths}

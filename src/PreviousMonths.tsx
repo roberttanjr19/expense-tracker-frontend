@@ -16,7 +16,7 @@ function PreviousMonths({ months, hasMore, allTimeTotal, onOpenMonth }: Previous
   if (months.length === 0) return null;
 
   return (
-    <section className="mx-auto w-full max-w-3xl border-t border-rule px-4 py-8 sm:px-6">
+    <section className="border-t border-rule py-8">
       <div className="flex items-baseline justify-between gap-4">
         <p className="eyebrow">Previous months</p>
         <p className="eyebrow whitespace-nowrap">
