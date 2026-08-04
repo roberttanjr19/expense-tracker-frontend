@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getTheme, setTheme } from "./theme";
-import type { Theme } from "./theme";
+import { useTheme } from "./theme";
 
 interface HeaderMenuProps {
   onSignOut: () => void;
@@ -17,7 +16,7 @@ const menuItemClasses =
  */
 function HeaderMenu({ onSignOut }: HeaderMenuProps) {
   const [open, setOpen] = useState(false);
-  const [theme, setThemeState] = useState<Theme>(() => getTheme());
+  const [theme, setTheme] = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,9 +43,7 @@ function HeaderMenu({ onSignOut }: HeaderMenuProps) {
   }, [open]);
 
   function toggleTheme() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    setThemeState(next);
+    setTheme(theme === "dark" ? "light" : "dark");
   }
 
   return (

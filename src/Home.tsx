@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Category, Expense, MonthSummary } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { formatMoney, formatSignedMoney } from "./money";
@@ -21,6 +22,7 @@ function toIsoDate(date: Date): string {
 }
 
 function Home({ token, onLogout }: HomeProps) {
+  const navigate = useNavigate();
   // Fixed at mount rather than recomputed on every render, so the screen
   // doesn't shift "current month" out from under the user at midnight.
   const [today] = useState(() => new Date());
@@ -166,12 +168,11 @@ function Home({ token, onLogout }: HomeProps) {
   }
 
   function handleOpenLedger() {
-    // The full ledger page is a later stage. Wired now so this only needs
-    // a destination swapped in once it exists.
+    navigate(`/ledger/${year}/${month}`);
   }
 
-  function handleOpenMonth(_year: number, _month: number) {
-    // Same as handleOpenLedger: routing target doesn't exist yet.
+  function handleOpenMonth(year: number, month: number) {
+    navigate(`/ledger/${year}/${month}`);
   }
 
   const monthTotal = useMemo(

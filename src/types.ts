@@ -25,6 +25,7 @@ export interface Expense {
   category: {
     id: number;
     name: string;
+    icon?: string | null;
   };
   user: {
     id: number;

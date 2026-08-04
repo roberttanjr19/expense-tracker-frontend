@@ -25,8 +25,12 @@ const feedRows = [...rows, ...rows];
  */
 function SampleLedger() {
   return (
-    <div className="h-[186px] overflow-hidden border-t border-rule" aria-hidden="true">
-      <div className="ledger-feed-track animate-[ledger-scroll_40s_linear_infinite]">
+    <div
+      className="relative h-[150px] overflow-hidden border-t border-rule"
+      aria-hidden="true"
+    >
+      <div className="ledger-feed-fade-top" />
+      <div className="ledger-feed-track animate-[ledger-scroll_34s_linear_infinite]">
         {feedRows.map((row, index) => (
           <div
             key={index}
@@ -39,6 +43,7 @@ function SampleLedger() {
           </div>
         ))}
       </div>
+      <div className="ledger-feed-fade" />
     </div>
   );
 }

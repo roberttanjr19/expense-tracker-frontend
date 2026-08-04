@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { API_BASE, extractErrorMessage } from "./api";
 import SampleLedger from "./SampleLedger";
 import RolePicker, { type Role } from "./RolePicker";
 
 type Mode = "login" | "register";
+
+const FORM_ENTRANCE_STAGGER_MS = 50;
 
 interface LoginProps {
   onLogin: (token: string) => void;
@@ -72,10 +76,29 @@ function Login({ onLogin }: LoginProps) {
     setMode(mode === "login" ? "register" : "login");
   }
 
+  // Staggered delay for the form's entrance animation. Indices are explicit
+  // (rather than an auto-incrementing counter) since register mode inserts
+  // two extra fields (name, role) before email/password/button/toggle.
+  function formFieldStyle(index: number) {
+    const delay = index * FORM_ENTRANCE_STAGGER_MS;
+    return { animation: `landing-fade-rise 300ms var(--ease-out) ${delay}ms both` };
+  }
+  const trailingFieldOffset = mode === "register" ? 2 : 0;
+
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <header className="border-b border-rule px-4 py-4 sm:px-6 sm:py-5">
-        <span className="text-[16px] font-medium">Daybook</span>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            aria-label="Back to Daybook home"
+            className="inline-flex items-center gap-1 rounded text-[14px] text-dim hover:text-ink focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back
+          </Link>
+          <span className="text-[16px] font-medium">Daybook</span>
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center px-4 py-16 sm:py-20">
@@ -89,6 +112,7 @@ function Login({ onLogin }: LoginProps) {
           </div>
 
           <form
+            key={mode}
             onSubmit={handleSubmit}
             className="mt-12 w-full max-w-[340px] space-y-3"
           >
@@ -97,7 +121,7 @@ function Login({ onLogin }: LoginProps) {
             </h2>
 
             {mode === "register" && (
-              <div>
+              <div className="login-field-anim" style={formFieldStyle(0)}>
                 <label htmlFor="name" className="sr-only">
                   Name
                 </label>
@@ -113,9 +137,13 @@ function Login({ onLogin }: LoginProps) {
               </div>
             )}
 
-            {mode === "register" && <RolePicker value={role} onChange={setRole} />}
+            {mode === "register" && (
+              <div className="login-field-anim" style={formFieldStyle(1)}>
+                <RolePicker value={role} onChange={setRole} />
+              </div>
+            )}
 
-            <div>
+            <div className="login-field-anim" style={formFieldStyle(trailingFieldOffset)}>
               <label htmlFor="email" className="sr-only">
                 Email
               </label>
@@ -130,7 +158,7 @@ function Login({ onLogin }: LoginProps) {
               />
             </div>
 
-            <div>
+            <div className="login-field-anim" style={formFieldStyle(trailingFieldOffset + 1)}>
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
@@ -154,7 +182,8 @@ function Login({ onLogin }: LoginProps) {
             <button
               type="submit"
               disabled={submitting}
-              className="h-10 w-full rounded bg-ink px-4 text-[15px] font-medium text-paper hover:opacity-90 disabled:opacity-50 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="login-field-anim h-10 w-full rounded bg-ink px-4 text-[15px] font-medium text-paper hover:opacity-90 disabled:opacity-50 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              style={formFieldStyle(trailingFieldOffset + 2)}
             >
               {submitting
                 ? "Please wait…"
@@ -163,7 +192,10 @@ function Login({ onLogin }: LoginProps) {
                 : "Create account"}
             </button>
 
-            <p className="text-center text-[14px] text-dim">
+            <p
+              className="login-field-anim text-center text-[14px] text-dim"
+              style={formFieldStyle(trailingFieldOffset + 3)}
+            >
               {mode === "login" ? (
                 <>
                   No account?{" "}

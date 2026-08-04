@@ -19,12 +19,18 @@
   --color-danger: #993C1D;
   --color-role-selected: #F2F1EC;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
 :root {
   color-scheme: light;
+
+  /* Shared easing tokens: a soft decelerate for things entering/settling,
+     and a symmetric ease for looping/idle motion. Used instead of the
+     built-in ease/ease-out keywords everywhere in this file. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 /*
@@ -73,22 +79,241 @@
     color: var(--color-dim);
   }
 
-  /* Paired with AuthPanel's .ledger-feed-track: :focus-within on this
+  /* Paired with SampleLedger's .ledger-feed-track: :focus-within on this
      wrapper covers the form's inputs even though the animated track lives
      in a sibling component, so no focus state needs threading through props. */
   .login-scope:focus-within .ledger-feed-track {
     animation-play-state: paused;
   }
 
-  /* Bottom fade for AuthPanel's ledger feed: hard-clips at the container's
-     overflow but softens the last row into the panel background instead of
-     cutting it off mid-row. */
-  .ledger-feed-fade {
+  /* Top/bottom fade for the login page's sample-ledger carousel: hard-clips
+     at the container's overflow but softens the first/last visible row into
+     --paper instead of cutting it off mid-row. */
+  .ledger-feed-fade,
+  .ledger-feed-fade-top {
     pointer-events: none;
     position: absolute;
-    inset: auto 0 0 0;
+    inset: 0 0 auto 0;
     height: 28px;
-    background: linear-gradient(to top, #161613, transparent);
+  }
+
+  .ledger-feed-fade {
+    inset: auto 0 0 0;
+    background: linear-gradient(to top, var(--color-paper), transparent);
+  }
+
+  .ledger-feed-fade-top {
+    background: linear-gradient(to bottom, var(--color-paper), transparent);
+  }
+
+  /* Landing page: category-icon blobs and ledger-strip rows. The entrance
+     (fade + rise) and idle float run on a wrapper element via inline style
+     (each item needs its own stagger/phase delay); this class only styles
+     the visible blob and owns the hover lift, so hover's transform never
+     fights the wrapper's running animation on the same property. */
+  .landing-blob {
+    transition: transform 180ms var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .landing-blob:hover {
+      transform: translateY(-4px) scale(1.08) rotate(-4deg);
+    }
+
+    /* Per-icon character animations: each fires only while its own blob is
+       hovered, and only on the inner <svg> — never the blob itself. That
+       three-level split (wrapper: float, .landing-blob: hover lift, svg:
+       character animation) means each animation owns a transform on its
+       own element, so none of them ever overwrite each other. With no
+       forwards fill-mode, leaving hover removes the animation and the svg
+       snaps back to its unanimated transform, so it always replays cleanly
+       from the start on the next hover. */
+    .landing-blob:hover .icon-hover-cart {
+      animation: cartWiggle 0.6s ease;
+    }
+    .landing-blob:hover .icon-hover-home {
+      animation: homeBounce 0.6s ease;
+    }
+    .landing-blob:hover .icon-hover-cap {
+      animation: capToss 0.7s ease;
+    }
+    .landing-blob:hover .icon-hover-bus {
+      animation: busDrive 0.6s ease;
+    }
+    .landing-blob:hover .icon-hover-heart {
+      animation: heartBeat 0.7s ease;
+    }
+    .landing-blob:hover .icon-hover-pad {
+      animation: padShake 0.5s ease;
+    }
+  }
+
+  /* Landing page buttons/links: quick press feedback on tap/click. */
+  .landing-btn {
+    transition: transform 120ms var(--ease-out);
+  }
+
+  .landing-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Login form fields: fade + rise entrance, replayed on mount and on
+     sign-in/register toggle (Login.tsx remounts the <form> via key={mode}).
+     Reduced motion keeps a real (if quick) opacity fade instead of just
+     disabling outright, per the .login-field-anim override below — unlike
+     .landing-anim, which skips the animation entirely. */
+  .login-field-anim {
+    animation: landing-fade-rise 300ms var(--ease-out) both;
+  }
+}
+
+@keyframes cartWiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-12deg);
+  }
+  40% {
+    transform: rotate(10deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  80% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes homeBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-9px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes capToss {
+  0% {
+    transform: rotate(0) translateY(0);
+  }
+  35% {
+    transform: rotate(-22deg) translateY(-8px);
+  }
+  65% {
+    transform: rotate(14deg) translateY(-2px);
+  }
+  100% {
+    transform: rotate(0) translateY(0);
+  }
+}
+
+@keyframes busDrive {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(6px);
+  }
+  50% {
+    transform: translateX(-14px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes heartBeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.28);
+  }
+  35% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+  65% {
+    transform: scale(1);
+  }
+}
+
+@keyframes padShake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  15% {
+    transform: translate(-2px, -1px) rotate(-4deg);
+  }
+  30% {
+    transform: translate(2px, 1px) rotate(4deg);
+  }
+  45% {
+    transform: translate(-2px, 1px) rotate(-3deg);
+  }
+  60% {
+    transform: translate(2px, -1px) rotate(3deg);
+  }
+  75% {
+    transform: translate(-1px, 0) rotate(-2deg);
+  }
+}
+
+@keyframes form-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes landing-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-blob-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Shared by every landing element with an inline entrance/float animation
+     (icon blobs, headline, subline, CTA, ledger-strip rows). Named
+     explicitly here — on top of the blanket duration override below — so
+     motion truly stops rather than just running imperceptibly fast. */
+  .landing-anim {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }
 
@@ -110,5 +335,14 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Login form entrance still fades in under reduced motion, just without
+     the rise: a class selector beats the universal one above on specificity
+     (both !important), so this wins regardless of source order. */
+  .login-field-anim {
+    animation-name: form-fade-in;
+    animation-duration: 250ms !important;
+    transform: none !important;
   }
 }
