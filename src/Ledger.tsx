@@ -6,6 +6,7 @@ import { authFetch, extractErrorMessage } from "./api";
 import { monthName } from "./date";
 import { linkButtonClasses } from "./formStyles";
 import HeaderMenu from "./HeaderMenu";
+import CategoryManager from "./CategoryManager";
 import ThemeToggle from "./ThemeToggle";
 import PeriodStepper from "./PeriodStepper";
 import LedgerTable from "./LedgerTable";
@@ -58,6 +59,8 @@ function Ledger({ token, onLogout }: LedgerProps) {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const [managingCategories, setManagingCategories] = useState(false);
 
   async function loadMonth() {
     setLoading(true);
@@ -225,7 +228,7 @@ function Ledger({ token, onLogout }: LedgerProps) {
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <HeaderMenu onSignOut={onLogout} />
+            <HeaderMenu onSignOut={onLogout} onManageCategories={() => setManagingCategories(true)} />
           </div>
         </div>
       </header>
@@ -284,6 +287,14 @@ function Ledger({ token, onLogout }: LedgerProps) {
           )}
         </main>
       )}
+
+      <CategoryManager
+        open={managingCategories}
+        onClose={() => setManagingCategories(false)}
+        token={token}
+        onLogout={onLogout}
+        onCategoriesChanged={loadMonth}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useTheme } from "./theme";
 
 interface HeaderMenuProps {
   onSignOut: () => void;
+  onManageCategories: () => void;
 }
 
 const menuItemClasses =
@@ -14,7 +15,7 @@ const menuItemClasses =
  * expose the two things the old unstyled header did: signing out and a
  * dark-mode toggle.
  */
-function HeaderMenu({ onSignOut }: HeaderMenuProps) {
+function HeaderMenu({ onSignOut, onManageCategories }: HeaderMenuProps) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +72,17 @@ function HeaderMenu({ onSignOut }: HeaderMenuProps) {
           role="menu"
           className="absolute right-0 top-12 z-10 w-48 rounded border border-rule bg-paper py-1 shadow-sm"
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onManageCategories();
+            }}
+            className={menuItemClasses}
+          >
+            <span>Manage categories</span>
+          </button>
           <button type="button" role="menuitem" onClick={toggleTheme} className={menuItemClasses}>
             <span>Dark mode</span>
             <span className="text-dim">{theme === "dark" ? "On" : "Off"}</span>

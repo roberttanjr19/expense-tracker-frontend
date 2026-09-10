@@ -3,8 +3,12 @@ import { useNavigate } from "react-router-dom";
 import type { Category, Expense, MonthSummary } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { formatMoney, formatSignedMoney } from "./money";
+import { monthName } from "./date";
 import { inputClasses, linkButtonClasses, primaryButtonClasses } from "./formStyles";
+import Logo from "./Logo";
 import HeaderMenu from "./HeaderMenu";
+import CategoryManager from "./CategoryManager";
+import PeriodStepper from "./PeriodStepper";
 import SummaryStrip from "./SummaryStrip";
 import LedgerPreview from "./LedgerPreview";
 import PreviousMonths from "./PreviousMonths";
@@ -26,12 +30,15 @@ function Home({ token, onLogout }: HomeProps) {
   // Fixed at mount rather than recomputed on every render, so the screen
   // doesn't shift "current month" out from under the user at midnight.
   const [today] = useState(() => new Date());
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
-  const monthLabel = useMemo(
-    () => today.toLocaleString("en-CA", { month: "long" }),
-    [today]
-  );
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth() + 1;
+
+  // The period currently being viewed. Starts on the real current month and
+  // moves independently of `today` as the user steps through the header's
+  // period stepper.
+  const [period, setPeriod] = useState(() => ({ year: todayYear, month: todayMonth }));
+  const { year, month } = period;
+  const monthLabel = useMemo(() => monthName(year, month), [year, month]);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -48,10 +55,7 @@ function Home({ token, onLogout }: HomeProps) {
   const [expenseError, setExpenseError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryError, setCategoryError] = useState("");
-  const [addingCategory, setAddingCategory] = useState(false);
+  const [managingCategories, setManagingCategories] = useState(false);
 
   async function loadAll() {
     setLoading(true);
@@ -90,7 +94,7 @@ function Home({ token, onLogout }: HomeProps) {
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [year, month]);
 
   async function refetchExpensesAndSummary() {
     const [expensesRes, summaryRes] = await Promise.all([
@@ -134,45 +138,32 @@ function Home({ token, onLogout }: HomeProps) {
     }
   }
 
-  async function handleAddCategory() {
-    const trimmedName = categoryName.trim();
-    if (!trimmedName) {
-      setCategoryError("Category name can't be empty.");
-      return;
-    }
-
-    setCategoryError("");
-    setAddingCategory(true);
-
-    try {
-      const response = await authFetch(token, "/api/categories", onLogout, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName }),
-      });
-
-      if (!response.ok) throw new Error(await extractErrorMessage(response));
-
-      setCategoryName("");
-      setShowAddCategory(false);
-
-      const categoriesRes = await authFetch(token, "/api/categories", onLogout);
-      if (categoriesRes.ok) setCategories(await categoriesRes.json());
-    } catch (err) {
-      setCategoryError(
-        err instanceof Error ? err.message : "Couldn't add that category. Please try again."
-      );
-    } finally {
-      setAddingCategory(false);
-    }
-  }
-
   function handleOpenLedger() {
     navigate(`/ledger/${year}/${month}`);
   }
 
   function handleOpenMonth(year: number, month: number) {
     navigate(`/ledger/${year}/${month}`);
+  }
+
+  const isAtOrAfterCurrentMonth =
+    year > todayYear || (year === todayYear && month >= todayMonth);
+
+  function goToPrevMonth() {
+    setPeriod((current) =>
+      current.month === 1
+        ? { year: current.year - 1, month: 12 }
+        : { year: current.year, month: current.month - 1 }
+    );
+  }
+
+  function goToNextMonth() {
+    if (isAtOrAfterCurrentMonth) return;
+    setPeriod((current) =>
+      current.month === 12
+        ? { year: current.year + 1, month: 1 }
+        : { year: current.year, month: current.month + 1 }
+    );
   }
 
   const monthTotal = useMemo(
@@ -212,15 +203,37 @@ function Home({ token, onLogout }: HomeProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="border-b border-rule">
-        <div className="mx-auto flex w-full max-w-[640px] shrink-0 items-center justify-between px-4 py-4 sm:px-6 sm:py-5 min-[900px]:max-w-[1100px] min-[900px]:px-8">
-          <div>
-            <span className="text-[16px] font-medium">Daybook</span>
-            <p className="eyebrow mt-0.5">
-              {monthLabel} {year}
-            </p>
+      <header className="border-b border-rule px-7 py-4 sm:py-5">
+        <div className="relative flex w-full flex-wrap items-center justify-between gap-y-3">
+          <div className="flex items-center gap-2">
+            <Logo size={26} className="text-ink" />
+            <span className="text-[19px] font-bold">Daybook</span>
           </div>
-          <HeaderMenu onSignOut={onLogout} />
+
+          {/* Desktop/tablet: true-centered on the row via absolute positioning,
+              so an uneven left/right zone width doesn't skew it off-center. */}
+          <div className="hidden min-[700px]:absolute min-[700px]:left-1/2 min-[700px]:top-1/2 min-[700px]:flex min-[700px]:-translate-x-1/2 min-[700px]:-translate-y-1/2">
+            <PeriodStepper
+              monthLabel={monthLabel}
+              year={year}
+              nextDisabled={isAtOrAfterCurrentMonth}
+              onPrev={goToPrevMonth}
+              onNext={goToNextMonth}
+            />
+          </div>
+
+          <HeaderMenu onSignOut={onLogout} onManageCategories={() => setManagingCategories(true)} />
+
+          {/* Mobile: its own full-width row below the wordmark/hamburger row. */}
+          <div className="flex w-full justify-center min-[700px]:hidden">
+            <PeriodStepper
+              monthLabel={monthLabel}
+              year={year}
+              nextDisabled={isAtOrAfterCurrentMonth}
+              onPrev={goToPrevMonth}
+              onNext={goToNextMonth}
+            />
+          </div>
         </div>
       </header>
 
@@ -318,67 +331,13 @@ function Home({ token, onLogout }: HomeProps) {
                 </div>
 
                 <div className="text-[13px]">
-                  {!showAddCategory ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCategory(true)}
-                      className={`${linkButtonClasses} text-dim`}
-                    >
-                      + New category
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <label htmlFor="categoryName" className="sr-only">
-                        Category name
-                      </label>
-                      <input
-                        id="categoryName"
-                        type="text"
-                        placeholder="Category name"
-                        value={categoryName}
-                        onChange={(e) => {
-                          setCategoryName(e.target.value);
-                          setCategoryError("");
-                        }}
-                        onKeyDown={(e) => {
-                          // This input lives inside the outer add-expense
-                          // <form>, so an unhandled Enter would implicitly
-                          // submit THAT form (a nested <form> here would be
-                          // invalid HTML). Intercept it and run the
-                          // category-add logic directly instead.
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddCategory();
-                          }
-                        }}
-                        className={`${inputClasses} h-9 text-[14px]`}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddCategory}
-                        disabled={addingCategory}
-                        className="h-9 shrink-0 rounded border border-rule px-3 text-[13px] text-ink hover:bg-band disabled:opacity-50 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                      >
-                        {addingCategory ? "Adding…" : "Add"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddCategory(false);
-                          setCategoryName("");
-                          setCategoryError("");
-                        }}
-                        className={`${linkButtonClasses} text-dim`}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                  {categoryError && (
-                    <p role="alert" className="mt-1 text-danger">
-                      {categoryError}
-                    </p>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setManagingCategories(true)}
+                    className={`${linkButtonClasses} text-dim`}
+                  >
+                    + New category
+                  </button>
                 </div>
 
                 <div>
@@ -430,6 +389,14 @@ function Home({ token, onLogout }: HomeProps) {
           />
         </main>
       )}
+
+      <CategoryManager
+        open={managingCategories}
+        onClose={() => setManagingCategories(false)}
+        token={token}
+        onLogout={onLogout}
+        onCategoriesChanged={loadAll}
+      />
     </div>
   );
 }
