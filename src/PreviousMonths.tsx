@@ -27,22 +27,22 @@ function PreviousMonths({ months, hasMore, allTimeTotal, onOpenMonth }: Previous
         </p>
       </div>
 
-      <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+      <div className="mt-4 flex gap-4 overflow-x-auto pb-1">
         {months.map((m) => (
           <button
             key={`${m.year}-${m.month}`}
             type="button"
             onClick={() => onOpenMonth(m.year, m.month)}
-            className="flex-none rounded border border-rule px-4 py-3 text-left hover:bg-band focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="min-w-[112px] flex-none rounded border border-rule px-5 py-4 text-left hover:bg-band focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
-            <p className="text-[13px] text-dim">{monthCardLabel(m.year, m.month)}</p>
-            <p className="mt-1 font-mono text-[15px] tabular-nums">{formatMoney(m.total)}</p>
+            <p className="text-[14px] text-dim">{monthCardLabel(m.year, m.month)}</p>
+            <p className="mt-1.5 font-mono text-[18px] tabular-nums">{formatMoney(m.total)}</p>
           </button>
         ))}
 
         {hasMore && (
           <div
-            className="flex flex-none items-center px-3 text-[15px] text-dim"
+            className="flex flex-none items-center px-4 text-[15px] text-dim"
             aria-hidden="true"
           >
             &#8943;
