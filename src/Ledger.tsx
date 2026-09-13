@@ -275,8 +275,8 @@ function Ledger({ token, onLogout }: LedgerProps) {
   }, [expenses]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="border-b border-rule">
+    <div className="flex min-h-screen flex-col dot-grid text-ink">
+      <header className="border-b border-rule bg-paper">
         <div className="mx-auto flex w-full max-w-[640px] shrink-0 items-center justify-between px-4 py-4 sm:px-6 sm:py-5 min-[900px]:max-w-[1100px] min-[900px]:px-8">
           <div className="flex items-center gap-3">
             <button
@@ -303,7 +303,7 @@ function Ledger({ token, onLogout }: LedgerProps) {
       </header>
 
       {loading ? (
-        <div className="flex min-h-[calc(100dvh-80px)] flex-col items-center justify-center gap-2 px-4 text-center">
+        <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center gap-2 px-4 text-center">
           <p className="text-[15px] text-dim">Loading&hellip;</p>
           {slowLoading && (
             <p className="max-w-xs text-sm text-dim">
@@ -312,11 +312,11 @@ function Ledger({ token, onLogout }: LedgerProps) {
           )}
         </div>
       ) : loadError ? (
-        <div className="flex min-h-[calc(100dvh-80px)] flex-col items-center justify-center px-4 text-center">
+        <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center px-4 text-center">
           <p className="text-[15px] text-danger">{loadError}</p>
         </div>
       ) : (
-        <main className="mx-auto w-full max-w-[640px] flex-1 px-4 py-8 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
+        <main className="mx-auto bg-paper w-full max-w-[640px] flex-1 px-4 py-8 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
           {actionError && (
             <p role="alert" className="mb-4 text-[15px] text-danger">
               {actionError}

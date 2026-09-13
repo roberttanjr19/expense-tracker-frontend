@@ -14,8 +14,8 @@ function entranceStyle(delayMs: number) {
 /** Public marketing page shown at "/" when logged out; links into /login. */
 function Landing() {
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="border-b border-rule px-6 py-4 sm:px-8 sm:py-5">
+    <div className="flex min-h-screen flex-col dot-grid text-ink">
+      <header className="border-b border-rule bg-paper px-6 py-4 sm:px-8 sm:py-5">
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-2">
             <Logo size={26} className="text-ink" />
@@ -39,7 +39,7 @@ function Landing() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[900px] flex-1 flex-col items-center justify-center px-4 py-14 text-center sm:px-6 sm:py-20">
+      <main className="mx-auto bg-paper flex w-full max-w-[900px] flex-1 flex-col items-center justify-center px-4 py-14 text-center sm:px-6 sm:py-20">
         <div className="mb-8 sm:mb-10">
           <FloatingIcons />
         </div>

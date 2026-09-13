@@ -16,6 +16,9 @@
   --color-rule: #C8C7C2;
   --color-accent: #0F6E56;
   --color-chip: #E4E4E1;
+  /* Dot-grid texture on the page surface. Faint warm grey — just off --paper,
+     so at 0.6px every 20px it reads as tooth in the paper, not as a pattern. */
+  --color-dot: #DAD8CF;
   --color-danger: #993C1D;
   /* Tinted wash behind an over-budget chip. Deliberately a solid swatch
      rather than a low-alpha --danger: the chip sits on --paper on some
@@ -52,6 +55,10 @@
   --color-rule: #302F2C;
   --color-accent: #5DCAA5;
   --color-chip: #232321;
+  /* Same idea inverted: a touch lighter than the dark --paper, so the texture
+     is light-on-dark. Kept opaque rather than rgba(255,255,255,.04) so the
+     dot lands identically no matter what sits behind it. */
+  --color-dot: #26251F;
   --color-danger: #F0997B;
   /* Dark counterpart: a deep clay that reads as "raised and warm" against
      both --paper (#121211) and --band (#1A1A18), with the light --danger
@@ -67,6 +74,10 @@
 @layer base {
   body {
     background-color: var(--color-paper);
+    /* Also on the body, not just .dot-grid, so overscroll/rubber-band areas
+       past the end of the page show the same texture instead of flat paper. */
+    background-image: radial-gradient(var(--color-dot) 0.6px, transparent 0.6px);
+    background-size: 20px 20px;
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 15px;
@@ -76,6 +87,26 @@
 }
 
 @layer components {
+  /*
+   * The page surface: --paper plus a faint dot grid, like engineering paper.
+   * Replaces a bare `bg-paper` on each screen's outermost element.
+   *
+   * Both colours are the same --color-* tokens every other surface uses, so
+   * the dark block above re-points them and the texture swaps with the theme
+   * on its own — no dark: variants, no JS, nothing for ThemeToggle to know
+   * about. The gradient re-resolves var(--color-dot) when the attribute on
+   * <html> changes, exactly like bg-paper re-resolves var(--color-paper).
+   *
+   * Decorative only: it never sits behind text, because every content
+   * surface (header, main, the loading/error panes) paints solid --paper
+   * over it. The grid shows in the gutters beside the content column.
+   */
+  .dot-grid {
+    background-color: var(--color-paper);
+    background-image: radial-gradient(var(--color-dot) 0.6px, transparent 0.6px);
+    background-size: 20px 20px;
+  }
+
   /* 12px uppercase label style. Source text stays sentence case in JSX;
      text-transform does the uppercasing so screen readers still hear it
      as written. */

@@ -211,13 +211,13 @@ function Home({ token, onLogout }: HomeProps) {
   );
 
   const otherMonths = monthSummaries.filter((s) => !(s.year === year && s.month === month));
-  const visibleMonths = otherMonths.slice(0, 4);
-  const hasMoreMonths = otherMonths.length > 4;
+  const visibleMonths = otherMonths.slice(0, 12);
+  const hasMoreMonths = otherMonths.length > 12;
   const allTimeTotal = monthSummaries.reduce((sum, s) => sum + s.total, 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="border-b border-rule px-7 py-4 sm:py-5">
+    <div className="flex min-h-screen flex-col dot-grid text-ink">
+      <header className="border-b border-rule bg-paper px-7 py-4 sm:py-5">
         <div className="relative flex w-full flex-wrap items-center justify-between gap-y-3">
           <div className="flex items-center gap-2">
             <Logo size={26} className="text-ink" />
@@ -252,7 +252,7 @@ function Home({ token, onLogout }: HomeProps) {
       </header>
 
       {loading ? (
-        <div className="flex min-h-[calc(100dvh-80px)] flex-col items-center justify-center gap-2 px-4 text-center">
+        <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center gap-2 px-4 text-center">
           <p className="text-[15px] text-dim">Loading your ledger&hellip;</p>
           {slowLoading && (
             <p className="max-w-xs text-sm text-dim">
@@ -261,11 +261,11 @@ function Home({ token, onLogout }: HomeProps) {
           )}
         </div>
       ) : loadError ? (
-        <div className="flex min-h-[calc(100dvh-80px)] flex-col items-center justify-center px-4 text-center">
+        <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center px-4 text-center">
           <p className="text-[15px] text-danger">{loadError}</p>
         </div>
       ) : (
-        <main className="mx-auto flex w-full max-w-[640px] flex-1 flex-col px-4 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
+        <main className="mx-auto bg-paper flex w-full max-w-[640px] flex-1 flex-col px-4 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
           <SummaryStrip
             spentLabel={formatMoney(monthTotal)}
             previousMonthName={previousMonthName}

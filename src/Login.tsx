@@ -86,8 +86,8 @@ function Login({ onLogin }: LoginProps) {
   const trailingFieldOffset = mode === "register" ? 2 : 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
-      <header className="border-b border-rule px-4 py-4 sm:px-6 sm:py-5">
+    <div className="flex min-h-screen flex-col dot-grid text-ink">
+      <header className="border-b border-rule bg-paper px-4 py-4 sm:px-6 sm:py-5">
         <div className="flex items-center gap-3">
           <Link
             to="/"
@@ -101,7 +101,7 @@ function Login({ onLogin }: LoginProps) {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center px-4 py-16 sm:py-20">
+      <main className="mx-auto bg-paper flex w-full max-w-xl flex-1 flex-col items-center px-4 py-16 sm:py-20">
         <div className="login-scope flex w-full flex-col items-center">
           <div className="w-full max-w-[520px] text-center">
             <p className="eyebrow">Expense tracker</p>
