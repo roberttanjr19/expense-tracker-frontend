@@ -1,6 +1,6 @@
-import { Check, Pencil, Trash2, X } from "lucide-react";
-import type { Category, Expense } from "./types";
-import { formatMoney } from "./money";
+import { AlertTriangle, Check, Pencil, Trash2, X } from "lucide-react";
+import type { Category, CategoryBudgetStatus, Expense } from "./types";
+import { formatMoney, formatMoneyRounded } from "./money";
 import { formatCompactDate } from "./date";
 import { resolveCategoryIcon } from "./icons";
 import { primaryButtonClasses } from "./formStyles";
@@ -24,11 +24,77 @@ interface LedgerRowProps {
   saving: boolean;
   editError: string;
   isDeleting: boolean;
+  /** Non-null only when this row's category is over budget this month. */
+  overBudget: CategoryBudgetStatus | null;
+  revealed: boolean;
+  onToggleReveal: () => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onDraftChange: (patch: Partial<ExpenseDraft>) => void;
   onSaveEdit: () => void;
   onDelete: () => void;
+}
+
+const chipClasses =
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 text-[13px]";
+
+/**
+ * The category chip in its warning state: a real button, so it's tabbable and
+ * operable by Enter/Space for free, and aria-expanded ties it to the detail it
+ * toggles. Takes a render callback for the icon rather than the icon name, so
+ * it reuses the row's existing dynamic-icon helper instead of resolving a
+ * component inside its own body (which the react-hooks/static-components rule
+ * would flag, same reason documented on LedgerRow's categoryIcon below).
+ */
+function OverBudgetChip({
+  name,
+  revealed,
+  revealId,
+  renderIcon,
+  onToggle,
+}: {
+  name: string;
+  revealed: boolean;
+  revealId: string;
+  renderIcon: (size: number, className: string) => React.ReactNode;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={revealed}
+      aria-controls={revealId}
+      className={`${chipClasses} max-w-full min-w-0 bg-danger-bg text-danger hover:opacity-85 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink`}
+    >
+      {renderIcon(14, "shrink-0")}
+      {/* Truncates rather than pushing the row wide: on mobile this chip
+          shares a line with the date and the edit/delete buttons, and a long
+          category name there would otherwise force a horizontal scroll. */}
+      <span className="truncate">{name}</span>
+      <AlertTriangle size={12} className="shrink-0" aria-hidden="true" />
+      <span className="sr-only">&mdash; over budget, show details</span>
+    </button>
+  );
+}
+
+/** The revealed line: "{Category} is over budget · $spent / $budget · $x over". */
+function BudgetRevealText({ status }: { status: CategoryBudgetStatus }) {
+  return (
+    <span className="text-[13px] text-dim">
+      {status.name} is over budget <span aria-hidden="true">&middot;</span>{" "}
+      <span className="font-mono tabular-nums text-ink">
+        {formatMoneyRounded(status.spent)} / {formatMoneyRounded(status.monthlyBudget ?? 0)}
+      </span>{" "}
+      <span aria-hidden="true">&middot;</span>{" "}
+      <span className="text-danger">
+        <span className="font-mono tabular-nums">
+          {formatMoneyRounded(status.exceeded ?? 0)}
+        </span>{" "}
+        over
+      </span>
+    </span>
+  );
 }
 
 const cellInputClasses =
@@ -59,12 +125,18 @@ function LedgerRow({
   saving,
   editError,
   isDeleting,
+  overBudget,
+  revealed,
+  onToggleReveal,
   onStartEdit,
   onCancelEdit,
   onDraftChange,
   onSaveEdit,
   onDelete,
 }: LedgerRowProps) {
+  const revealId = `budget-reveal-${expense.id}`;
+  const showReveal = overBudget !== null && revealed;
+
   // Nested (rather than a top-level `const CategoryIcon = ...`) so the
   // dynamically-resolved icon component isn't flagged by the
   // react-hooks/static-components rule as "a component created during
@@ -183,52 +255,79 @@ function LedgerRow({
     }
 
     return (
-      <tr className={`group ${banded ? "bg-band" : ""} ${isDeleting ? "opacity-50" : ""}`}>
-        <td className="whitespace-nowrap px-3 py-2.5 font-mono text-dim">
-          {formatCompactDate(expense.expenseDate)}
-        </td>
-        <td className="px-3 py-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="truncate">{expense.description}</span>
-            <span className="flex shrink-0 gap-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
-              <button
-                type="button"
-                aria-label="Edit entry"
-                onClick={onStartEdit}
-                disabled={isDeleting}
-                className={iconButtonClasses}
-              >
-                <Pencil size={15} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Delete entry"
-                onClick={onDelete}
-                disabled={isDeleting}
-                className={iconButtonClasses}
-              >
-                <Trash2 size={15} aria-hidden="true" />
-              </button>
-            </span>
-          </div>
-        </td>
-        <td className="px-3 py-2.5">
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded bg-chip px-2 py-1 text-[13px]">
-            {categoryIcon(14, "shrink-0 text-dim")}
-            {expense.category.name}
-          </span>
-        </td>
-        <td
-          className={`whitespace-nowrap px-3 py-2.5 text-right font-mono tabular-nums ${
-            isMax ? "text-accent" : ""
-          }`}
-        >
-          {formatMoney(expense.amount)}
-        </td>
-        <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono tabular-nums text-dim">
-          {formatMoney(runningTotal)}
-        </td>
-      </tr>
+      <>
+        <tr className={`group ${banded ? "bg-band" : ""} ${isDeleting ? "opacity-50" : ""}`}>
+          <td className="whitespace-nowrap px-3 py-2.5 font-mono text-dim">
+            {formatCompactDate(expense.expenseDate)}
+          </td>
+          <td className="px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate">{expense.description}</span>
+              <span className="flex shrink-0 gap-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                <button
+                  type="button"
+                  aria-label="Edit entry"
+                  onClick={onStartEdit}
+                  disabled={isDeleting}
+                  className={iconButtonClasses}
+                >
+                  <Pencil size={15} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Delete entry"
+                  onClick={onDelete}
+                  disabled={isDeleting}
+                  className={iconButtonClasses}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </button>
+              </span>
+            </div>
+          </td>
+          <td className="px-3 py-2.5">
+            {overBudget ? (
+              <OverBudgetChip
+                name={expense.category.name}
+                revealed={revealed}
+                revealId={revealId}
+                renderIcon={categoryIcon}
+                onToggle={onToggleReveal}
+              />
+            ) : (
+              <span className={`${chipClasses} bg-chip`}>
+                {categoryIcon(14, "shrink-0 text-dim")}
+                {expense.category.name}
+              </span>
+            )}
+          </td>
+          <td
+            className={`whitespace-nowrap px-3 py-2.5 text-right font-mono tabular-nums ${
+              isMax ? "text-accent" : ""
+            }`}
+          >
+            {formatMoney(expense.amount)}
+          </td>
+          <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono tabular-nums text-dim">
+            {formatMoney(runningTotal)}
+          </td>
+        </tr>
+
+        {/* Its own <tr> rather than an expanding cell: a row can't grow without
+            stretching every sibling cell, and this keeps the five-column grid
+            intact. Mirrors the shape the edit-error row already uses above.
+            Banding is assigned from the expense's index in LedgerTable, so an
+            extra DOM row here never shifts the zebra on the rows below. */}
+        {showReveal && (
+          <tr className={`${banded ? "bg-band" : ""} ${isDeleting ? "opacity-50" : ""}`}>
+            <td colSpan={5} className="px-3 pb-2.5">
+              <div id={revealId} className="budget-reveal">
+                <BudgetRevealText status={overBudget} />
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
     );
   }
 
@@ -336,8 +435,25 @@ function LedgerRow({
       <div className="mt-1 flex items-center gap-1.5 text-[13px] text-dim">
         <span className="font-mono">{formatCompactDate(expense.expenseDate)}</span>
         <span aria-hidden="true">&middot;</span>
-        {categoryIcon(13, "shrink-0")}
-        <span className="truncate">{expense.category.name}</span>
+        {/* There's no chip on mobile normally — the category is plain text in
+            this meta line. Over budget it becomes one, so the warning has a
+            real tappable target here too. */}
+        {overBudget ? (
+          <span className="min-w-0">
+            <OverBudgetChip
+              name={expense.category.name}
+              revealed={revealed}
+              revealId={revealId}
+              renderIcon={categoryIcon}
+              onToggle={onToggleReveal}
+            />
+          </span>
+        ) : (
+          <>
+            {categoryIcon(13, "shrink-0")}
+            <span className="truncate">{expense.category.name}</span>
+          </>
+        )}
         <span className="ml-auto flex shrink-0 gap-1">
           <button
             type="button"
@@ -359,6 +475,12 @@ function LedgerRow({
           </button>
         </span>
       </div>
+
+      {showReveal && (
+        <div id={revealId} className="budget-reveal mt-1.5">
+          <BudgetRevealText status={overBudget} />
+        </div>
+      )}
     </div>
   );
 }

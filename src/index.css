@@ -17,6 +17,11 @@
   --color-accent: #0F6E56;
   --color-chip: #E4E4E1;
   --color-danger: #993C1D;
+  /* Tinted wash behind an over-budget chip. Deliberately a solid swatch
+     rather than a low-alpha --danger: the chip sits on --paper on some
+     ledger rows and on the --band zebra stripe on others, and a solid value
+     lands identically on both. Carries --danger text at ~7:1 either way. */
+  --color-danger-bg: #F3DFD6;
   --color-role-selected: #F2F1EC;
 
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
@@ -48,6 +53,10 @@
   --color-accent: #5DCAA5;
   --color-chip: #232321;
   --color-danger: #F0997B;
+  /* Dark counterpart: a deep clay that reads as "raised and warm" against
+     both --paper (#121211) and --band (#1A1A18), with the light --danger
+     salmon sitting on top of it. */
+  --color-danger-bg: #3B241B;
   /* "Subtle raised" rather than a distinct light-mode swatch: reuse the
      existing band token so a selected role card just looks lifted, not
      recolored. */
@@ -164,6 +173,13 @@
      .landing-anim, which skips the animation entirely. */
   .login-field-anim {
     animation: landing-fade-rise 300ms var(--ease-out) both;
+  }
+
+  /* The inline "over budget" detail a ledger row reveals when its category
+     chip is clicked. Applied to a div inside the cell rather than to the
+     <tr>/row itself, because transforms on table rows aren't reliable. */
+  .budget-reveal {
+    animation: budget-reveal 160ms var(--ease-out) both;
   }
 }
 
@@ -296,6 +312,17 @@
   }
 }
 
+@keyframes budget-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes landing-blob-float {
   0%,
   100% {
@@ -314,6 +341,15 @@
   .landing-anim {
     animation: none !important;
     opacity: 1 !important;
+  }
+
+  /* The reveal appears instantly instead of sliding. Named explicitly rather
+     than left to the blanket duration override below, so no transform runs
+     at all — the content is either there or it isn't. */
+  .budget-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 

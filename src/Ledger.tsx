@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import type { Category, Expense } from "./types";
+import type { Category, CategoryBudgetStatus, Expense } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { monthName } from "./date";
 import { linkButtonClasses } from "./formStyles";
@@ -13,6 +13,7 @@ import LedgerTable from "./LedgerTable";
 import type { ExpenseDraft } from "./LedgerRow";
 import Breakdown from "./Breakdown";
 import type { CategoryTotal } from "./Breakdown";
+import { useBudgetStatus } from "./useBudgetStatus";
 
 interface LedgerProps {
   token: string;
@@ -20,6 +21,9 @@ interface LedgerProps {
 }
 
 const emptyDraft: ExpenseDraft = { amount: "", description: "", expenseDate: "", categoryId: "" };
+
+/** Shared empty set, so "nothing revealed" never allocates. */
+const noReveals: ReadonlySet<number> = new Set();
 
 function Ledger({ token, onLogout }: LedgerProps) {
   const navigate = useNavigate();
@@ -62,7 +66,53 @@ function Ledger({ token, onLogout }: LedgerProps) {
 
   const [managingCategories, setManagingCategories] = useState(false);
 
-  async function loadMonth() {
+  // The hook refetches on its own whenever year/month change, so loadMonth
+  // stays out of it — otherwise stepping a month would fire two identical
+  // budget requests. Mutations go through refreshAfterChange below instead.
+  const { statusByCategoryId, refetch: refetchBudgets } = useBudgetStatus(
+    token,
+    year,
+    month,
+    onLogout
+  );
+
+  // Which rows have their over-budget detail open, by expense id. Lives here
+  // rather than inside LedgerRow because it has to be reconciled against
+  // freshly-fetched budget status (see pruneReveals below).
+  const [revealedRowIds, setRevealedRowIds] = useState<ReadonlySet<number>>(noReveals);
+
+  function toggleReveal(expenseId: number) {
+    setRevealedRowIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(expenseId)) next.add(expenseId);
+      return next;
+    });
+  }
+
+  /**
+   * Auto-close, decided by the refreshed data rather than by which row was
+   * edited: a reveal survives only if its expense still exists and its
+   * category is still over budget. This can only ever remove ids — a category
+   * newly pushed over budget just becomes clickable, it never springs open.
+   */
+  function pruneReveals(freshExpenses: Expense[], freshStatuses: CategoryBudgetStatus[]) {
+    const overCategoryIds = new Set(
+      freshStatuses.filter((s) => s.exceeded != null).map((s) => s.categoryId)
+    );
+    const stillWarning = new Set(
+      freshExpenses.filter((e) => overCategoryIds.has(e.category.id)).map((e) => e.id)
+    );
+    setRevealedRowIds((current) => {
+      if (current.size === 0) return current;
+      const next = new Set([...current].filter((id) => stillWarning.has(id)));
+      // `next` is always a subset of `current`, so equal sizes mean nothing
+      // was dropped — returning the same Set lets React bail out of the update.
+      return next.size === current.size ? current : next;
+    });
+  }
+
+  /** Resolves to the expenses it loaded, or null if the load failed. */
+  async function loadMonth(): Promise<Expense[] | null> {
     setLoading(true);
     setSlowLoading(false);
     setLoadError("");
@@ -79,12 +129,15 @@ function Ledger({ token, onLogout }: LedgerProps) {
       if (!expensesRes.ok) throw new Error(await extractErrorMessage(expensesRes));
       if (!categoriesRes.ok) throw new Error(await extractErrorMessage(categoriesRes));
 
-      setExpenses(await expensesRes.json());
+      const loadedExpenses: Expense[] = await expensesRes.json();
+      setExpenses(loadedExpenses);
       setCategories(await categoriesRes.json());
+      return loadedExpenses;
     } catch (err) {
       setLoadError(
         err instanceof Error ? err.message : "Couldn't load this month. Please try again."
       );
+      return null;
     } finally {
       clearTimeout(slowTimer);
       setSlowLoading(false);
@@ -96,6 +149,17 @@ function Ledger({ token, onLogout }: LedgerProps) {
     if (isValidPeriod) loadMonth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month, isValidPeriod]);
+
+  /**
+   * What every mutation calls: an expense change moves both the ledger and
+   * the amount spent against a budget, so the two have to come back together
+   * or a chip could sit there warning about spending that's already been
+   * edited away.
+   */
+  async function refreshAfterChange() {
+    const [freshExpenses, freshStatuses] = await Promise.all([loadMonth(), refetchBudgets()]);
+    if (freshExpenses) pruneReveals(freshExpenses, freshStatuses);
+  }
 
   function startEdit(expense: Expense) {
     setEditingId(expense.id);
@@ -137,7 +201,7 @@ function Ledger({ token, onLogout }: LedgerProps) {
       if (!response.ok) throw new Error(await extractErrorMessage(response));
 
       setEditingId(null);
-      await loadMonth();
+      await refreshAfterChange();
     } catch (err) {
       // Deliberately don't touch editDraft here, so the values the user
       // typed are still there to fix and resubmit.
@@ -163,7 +227,7 @@ function Ledger({ token, onLogout }: LedgerProps) {
       if (!response.ok) throw new Error(await extractErrorMessage(response));
 
       if (editingId === id) cancelEdit();
-      await loadMonth();
+      await refreshAfterChange();
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : "Couldn't delete that entry. Please try again."
@@ -176,14 +240,19 @@ function Ledger({ token, onLogout }: LedgerProps) {
   const isAtOrAfterCurrentMonth =
     year > todayYear || (year === todayYear && month >= todayMonth);
 
+  // Reveals are keyed by expense id and the component stays mounted across a
+  // period change, so they're cleared here rather than left to linger and
+  // pop back open if the user steps away and returns to this month.
   function goToPrevMonth() {
     const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+    setRevealedRowIds(noReveals);
     navigate(`/ledger/${prev.year}/${prev.month}`);
   }
 
   function goToNextMonth() {
     if (isAtOrAfterCurrentMonth) return;
     const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+    setRevealedRowIds(noReveals);
     navigate(`/ledger/${next.year}/${next.month}`);
   }
 
@@ -276,6 +345,9 @@ function Ledger({ token, onLogout }: LedgerProps) {
                 saving={saving}
                 editError={editError}
                 deletingId={deletingId}
+                statusByCategoryId={statusByCategoryId}
+                revealedRowIds={revealedRowIds}
+                onToggleReveal={toggleReveal}
                 onStartEdit={startEdit}
                 onCancelEdit={cancelEdit}
                 onDraftChange={updateDraft}
@@ -293,7 +365,7 @@ function Ledger({ token, onLogout }: LedgerProps) {
         onClose={() => setManagingCategories(false)}
         token={token}
         onLogout={onLogout}
-        onCategoriesChanged={loadMonth}
+        onCategoriesChanged={refreshAfterChange}
       />
     </div>
   );

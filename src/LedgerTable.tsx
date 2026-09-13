@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Category, Expense } from "./types";
+import type { Category, CategoryBudgetStatus, Expense } from "./types";
 import { formatMoney } from "./money";
 import LedgerRow from "./LedgerRow";
 import type { ExpenseDraft } from "./LedgerRow";
@@ -13,6 +13,10 @@ interface LedgerTableProps {
   saving: boolean;
   editError: string;
   deletingId: number | null;
+  /** Empty when budget status is unavailable, which leaves every chip plain. */
+  statusByCategoryId: Map<number, CategoryBudgetStatus>;
+  revealedRowIds: ReadonlySet<number>;
+  onToggleReveal: (expenseId: number) => void;
   onStartEdit: (expense: Expense) => void;
   onCancelEdit: () => void;
   onDraftChange: (patch: Partial<ExpenseDraft>) => void;
@@ -31,6 +35,9 @@ function LedgerTable({
   saving,
   editError,
   deletingId,
+  statusByCategoryId,
+  revealedRowIds,
+  onToggleReveal,
   onStartEdit,
   onCancelEdit,
   onDraftChange,
@@ -65,6 +72,10 @@ function LedgerTable({
 
   function rowProps(expense: Expense, index: number) {
     const isEditing = editingId === expense.id;
+    // Only an over-budget status reaches the row; under-budget and no-budget
+    // categories hand down null, which is what keeps their chips untouched.
+    const status = statusByCategoryId.get(expense.category.id);
+    const overBudget = status && status.exceeded != null ? status : null;
     return {
       expense,
       categories,
@@ -76,6 +87,9 @@ function LedgerTable({
       saving,
       editError: isEditing ? editError : "",
       isDeleting: deletingId === expense.id,
+      overBudget,
+      revealed: revealedRowIds.has(expense.id),
+      onToggleReveal: () => onToggleReveal(expense.id),
       onStartEdit: () => onStartEdit(expense),
       onCancelEdit,
       onDraftChange,

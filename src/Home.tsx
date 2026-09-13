@@ -12,6 +12,8 @@ import PeriodStepper from "./PeriodStepper";
 import SummaryStrip from "./SummaryStrip";
 import LedgerPreview from "./LedgerPreview";
 import PreviousMonths from "./PreviousMonths";
+import BudgetList from "./BudgetList";
+import { useBudgetStatus } from "./useBudgetStatus";
 
 interface HomeProps {
   token: string;
@@ -57,6 +59,10 @@ function Home({ token, onLogout }: HomeProps) {
 
   const [managingCategories, setManagingCategories] = useState(false);
 
+  // Refetches itself when `period` changes, so loadAll doesn't also ask for
+  // budgets — that would double the request on every step of the stepper.
+  const { budgeted, refetch: refetchBudgets } = useBudgetStatus(token, year, month, onLogout);
+
   async function loadAll() {
     setLoading(true);
     setSlowLoading(false);
@@ -96,13 +102,21 @@ function Home({ token, onLogout }: HomeProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
+  // Budget status rides along here because a new entry changes what's been
+  // spent against a budget, not just the month's total.
   async function refetchExpensesAndSummary() {
     const [expensesRes, summaryRes] = await Promise.all([
       authFetch(token, `/api/expenses?year=${year}&month=${month}`, onLogout),
       authFetch(token, "/api/expenses/summary/months", onLogout),
+      refetchBudgets(),
     ]);
     if (expensesRes.ok) setExpenses(await expensesRes.json());
     if (summaryRes.ok) setMonthSummaries(await summaryRes.json());
+  }
+
+  /** The budget-setting panel can change budgets themselves, so both reload. */
+  async function handleCategoriesChanged() {
+    await Promise.all([loadAll(), refetchBudgets()]);
   }
 
   async function handleAddExpense(e: React.FormEvent) {
@@ -259,6 +273,12 @@ function Home({ token, onLogout }: HomeProps) {
             entryCount={expenses.length}
           />
 
+          {/* Directly under the summary strip: this is a summary of the same
+              selected month, and it's what you'd want to see before typing a
+              new entry — below "Previous months" would bury it. Renders
+              nothing at all when no category has a budget. */}
+          <BudgetList budgets={budgeted} />
+
           <div className="space-y-8 py-8 min-[900px]:grid min-[900px]:grid-cols-[42%_1fr] min-[900px]:gap-x-10 min-[900px]:space-y-0">
             <section>
               <p className="eyebrow">What did you spend?</p>
@@ -395,7 +415,7 @@ function Home({ token, onLogout }: HomeProps) {
         onClose={() => setManagingCategories(false)}
         token={token}
         onLogout={onLogout}
-        onCategoriesChanged={loadAll}
+        onCategoriesChanged={handleCategoriesChanged}
       />
     </div>
   );
