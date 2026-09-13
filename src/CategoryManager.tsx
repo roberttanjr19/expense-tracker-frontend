@@ -4,6 +4,8 @@ import type { Category } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { formatMoney } from "./money";
 import { resolveCategoryIcon } from "./icons";
+import { DEFAULT_CATEGORY_ICON } from "./categoryIcons";
+import IconPicker from "./IconPicker";
 import { inputClasses, primaryButtonClasses } from "./formStyles";
 
 interface CategoryManagerProps {
@@ -55,12 +57,14 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftBudget, setDraftBudget] = useState("");
+  const [draftIcon, setDraftIcon] = useState(DEFAULT_CATEGORY_ICON);
   const [rowError, setRowError] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [newName, setNewName] = useState("");
   const [newBudget, setNewBudget] = useState("");
+  const [newIcon, setNewIcon] = useState(DEFAULT_CATEGORY_ICON);
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -88,6 +92,7 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
     setRowError("");
     setNewName("");
     setNewBudget("");
+    setNewIcon(DEFAULT_CATEGORY_ICON);
     setAddError("");
     loadCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,6 +115,9 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
     setEditingId(category.id);
     setDraftName(category.name);
     setDraftBudget(category.monthlyBudget != null ? String(category.monthlyBudget) : "");
+    // Categories saved before the picker existed have no icon; the neutral
+    // default stands in so the picker always has a valid selection.
+    setDraftIcon(category.icon ?? DEFAULT_CATEGORY_ICON);
     setRowError("");
   }
 
@@ -141,7 +149,10 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
       const response = await authFetch(token, `/api/categories/${category.id}`, onLogout, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, icon: category.icon, monthlyBudget }),
+        // draftIcon rather than category.icon: this used to pass the stored
+        // icon straight back so an edit wouldn't wipe it. Now the picker owns
+        // it, seeded from category.icon in startEdit.
+        body: JSON.stringify({ name: trimmedName, icon: draftIcon, monthlyBudget }),
       });
       if (!response.ok) throw new Error(await extractErrorMessage(response));
 
@@ -173,6 +184,7 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
       setEditingId(category.id);
       setDraftName(category.name);
       setDraftBudget(category.monthlyBudget != null ? String(category.monthlyBudget) : "");
+      setDraftIcon(category.icon ?? DEFAULT_CATEGORY_ICON);
       setRowError(
         err instanceof Error ? err.message : "Couldn't delete that category. Please try again."
       );
@@ -200,12 +212,15 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
       const response = await authFetch(token, "/api/categories", onLogout, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, monthlyBudget }),
+        // `icon` is new here — create previously sent no icon at all, so every
+        // category started on the Circle fallback.
+        body: JSON.stringify({ name: trimmedName, icon: newIcon, monthlyBudget }),
       });
       if (!response.ok) throw new Error(await extractErrorMessage(response));
 
       setNewName("");
       setNewBudget("");
+      setNewIcon(DEFAULT_CATEGORY_ICON);
       await afterMutation();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Couldn't add that category. Please try again.");
@@ -213,6 +228,13 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
       setAdding(false);
     }
   }
+
+  // One editing context at a time: while a row's inline edit form is open,
+  // the add-new form is hidden. editingId already answers "is a row being
+  // edited" (it holds that row's id, or null), so no new state is needed —
+  // and because it's the same flag the row forms key off, the two can't
+  // disagree about which mode the panel is in.
+  const isEditingRow = editingId !== null;
 
   return (
     <div
@@ -251,6 +273,11 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
               const isEditing = editingId === category.id;
               const busy = savingId === category.id || deletingId === category.id;
 
+              // Only needed while editing, and resolved inside the map
+              // callback (not at the component's top level) for the same
+              // reason the other dynamic icons in this app are.
+              const DraftIcon = resolveCategoryIcon(draftIcon);
+
               if (isEditing) {
                 return (
                   <form
@@ -262,7 +289,9 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
                     className={`space-y-2 px-5 py-3 ${banded ? "bg-band" : ""}`}
                   >
                     <div className="flex items-center gap-2">
-                      <CategoryIcon size={16} className="shrink-0 text-dim" aria-hidden="true" />
+                      {/* Resolves draftIcon, not category.icon, so this
+                          previews the picked icon live before saving. */}
+                      <DraftIcon size={16} className="shrink-0 text-ink" aria-hidden="true" />
                       <label className="sr-only" htmlFor={`name-${category.id}`}>
                         Category name
                       </label>
@@ -291,6 +320,14 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
                         value={draftBudget}
                         onChange={(e) => setDraftBudget(e.target.value)}
                         className={`${cellInputClasses} flex-1 font-mono tabular-nums`}
+                      />
+                    </div>
+
+                    <div className="pl-6">
+                      <IconPicker
+                        value={draftIcon}
+                        onChange={setDraftIcon}
+                        labelId={`icon-label-${category.id}`}
                       />
                     </div>
 
@@ -342,42 +379,56 @@ function CategoryManager({ open, onClose, token, onLogout, onCategoriesChanged }
           )}
         </div>
 
-        <form onSubmit={addCategory} className="flex flex-col gap-2 border-t border-rule px-5 py-4 sm:flex-row sm:items-start">
-          <label className="sr-only" htmlFor="new-category-name">
-            New category name
-          </label>
-          <input
-            id="new-category-name"
-            type="text"
-            placeholder="New category"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className={`${inputClasses} sm:flex-1`}
-          />
-          <div className="flex items-center gap-2">
-            <label className="sr-only" htmlFor="new-category-budget">
-              Monthly budget (optional)
-            </label>
-            <span className="font-mono text-[14px] text-dim" aria-hidden="true">
-              $
-            </span>
-            <input
-              id="new-category-budget"
-              type="number"
-              step="0.01"
-              min="0"
-              inputMode="decimal"
-              placeholder="Budget"
-              value={newBudget}
-              onChange={(e) => setNewBudget(e.target.value)}
-              className={`${inputClasses} w-28 font-mono tabular-nums sm:w-32`}
-            />
-          </div>
-          <button type="submit" disabled={adding} className={`${primaryButtonClasses} sm:w-auto sm:px-5`}>
-            {adding ? "Adding…" : "Add"}
-          </button>
-        </form>
-        {addError && <p className="px-5 pb-4 text-[13px] text-danger">{addError}</p>}
+        {/* Hidden while a row is being edited, so the panel offers one
+            form — and one icon grid — at a time. */}
+        {!isEditingRow && (
+          <>
+            {/* The name/budget/Add row keeps its own flex layout; the picker sits
+                below it, so the row isn't disturbed on either breakpoint. */}
+            <form onSubmit={addCategory} className="border-t border-rule px-5 py-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <label className="sr-only" htmlFor="new-category-name">
+                  New category name
+                </label>
+                <input
+                  id="new-category-name"
+                  type="text"
+                  placeholder="New category"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className={`${inputClasses} sm:flex-1`}
+                />
+                <div className="flex items-center gap-2">
+                  <label className="sr-only" htmlFor="new-category-budget">
+                    Monthly budget (optional)
+                  </label>
+                  <span className="font-mono text-[14px] text-dim" aria-hidden="true">
+                    $
+                  </span>
+                  <input
+                    id="new-category-budget"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    placeholder="Budget"
+                    value={newBudget}
+                    onChange={(e) => setNewBudget(e.target.value)}
+                    className={`${inputClasses} w-28 font-mono tabular-nums sm:w-32`}
+                  />
+                </div>
+                <button type="submit" disabled={adding} className={`${primaryButtonClasses} sm:w-auto sm:px-5`}>
+                  {adding ? "Adding…" : "Add"}
+                </button>
+              </div>
+
+              <div className="mt-3">
+                <IconPicker value={newIcon} onChange={setNewIcon} labelId="icon-label-new" />
+              </div>
+            </form>
+            {addError && <p className="px-5 pb-4 text-[13px] text-danger">{addError}</p>}
+          </>
+        )}
       </div>
     </div>
   );
