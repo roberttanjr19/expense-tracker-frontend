@@ -28,7 +28,23 @@
   --color-role-selected: #F2F1EC;
 
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", monospace;
+  /*
+   * The NUMBER font. Named --font-mono for one reason only: that name is what
+   * generates Tailwind's `font-mono` utility, which ~40 call sites across the
+   * ledger, summaries and budgets already use. Changing the value here
+   * re-points every one of them at once; renaming the token would mean
+   * editing all of them.
+   *
+   * It is no longer a monospace. Inter is proportional, so the digits are NOT
+   * self-aligning the way DM Mono's were — alignment now depends entirely on
+   * the tabular-figure rule further down this file. Do not drop that rule.
+   *
+   * The fallbacks are deliberately the same sans stack as --font-sans rather
+   * than ui-monospace: if Inter fails to load, numbers should degrade to a
+   * proportional system sans (which still honours tnum), not snap back to a
+   * typewriter face.
+   */
+  --font-mono: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -39,6 +55,26 @@
      built-in ease/ease-out keywords everywhere in this file. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /*
+   * CARD SURFACE SYSTEM — reusable on any page, nothing here is home-specific.
+   *
+   * Plain custom properties rather than @theme entries on purpose: only two of
+   * the five are colours, and radius/shadow/gap have no Tailwind colour
+   * utility to generate. They're consumed through the .card / .card-pill
+   * classes further down, and through arbitrary values such as
+   * gap-[var(--card-gap)] where a layout needs the spacing directly.
+   */
+  --card-bg: #FFFFFF;
+  --card-border: rgba(0, 0, 0, 0.06);
+  --card-radius: 18px;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 10px 30px -18px rgba(0, 0, 0, 0.16);
+  --card-gap: 16px;
+
+  /* The solid bottom lip under a pressable button. Translucent black reads
+     correctly in both themes: under the near-black light button it's a darker
+     edge, under the near-white dark button it's a cast shadow. */
+  --press-edge: rgba(0, 0, 0, 0.45);
 }
 
 /*
@@ -68,6 +104,20 @@
      existing band token so a selected role card just looks lifted, not
      recolored. */
   --color-role-selected: var(--color-band);
+
+  /*
+   * Dark cards. #1C1C1A against the #121211 page is a small step up in
+   * lightness — that step, not the shadow, is what makes a card read as
+   * raised in a dark UI. The shadow is nearly invisible by design: a
+   * light-theme shadow at dark-theme scale turns into a black halo.
+   * --card-radius and --card-gap are theme-independent, so they aren't
+   * repeated here.
+   */
+  --card-bg: #1C1C1A;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -18px rgba(0, 0, 0, 0.6);
+  --press-edge: rgba(0, 0, 0, 0.35);
+
   color-scheme: dark;
 }
 
@@ -86,7 +136,85 @@
   }
 }
 
+/*
+ * Tabular figures for everything drawn in the number font.
+ *
+ * With DM Mono this came for free — every glyph in a monospace is one width.
+ * Inter is proportional, so without this a "1" is narrower than an "8" and
+ * the ledger's amount and running-total columns stop lining up.
+ *
+ * Attached to .font-mono rather than repeated per component so it cannot be
+ * forgotten: six existing call sites (the ledger date cells among them) use
+ * font-mono WITHOUT the tabular-nums utility, and every future one would be
+ * a coin flip. It sits in @layer utilities and after the Tailwind import, so
+ * it settles ties with the generated font-mono utility instead of fighting it.
+ *
+ * The slashed zero rides on font-feature-settings, a different property from
+ * font-variant-numeric — so Tailwind's tabular-nums utility can't half-
+ * override it and leave zeros looking different on elements that carry that
+ * utility versus elements that don't.
+ */
+@layer utilities {
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+}
+
 @layer components {
+  /* A raised surface floating on the dot grid. Pair with your own padding. */
+  .card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+  }
+
+  /* Same surface, fully rounded — the period stepper's pill. */
+  .card-pill {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    box-shadow: var(--card-shadow);
+  }
+
+  /*
+   * A button with a solid bottom lip that collapses when pressed. Kept out of
+   * primaryButtonClasses (shared with the category panel, ledger rows and
+   * login) so opting in stays per-button.
+   *
+   * :active is scoped with :not(:disabled) — a disabled button shouldn't
+   * appear to depress while it's refusing the click.
+   */
+  .btn-press {
+    box-shadow: 0 2px 0 var(--press-edge);
+    transition: transform 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+  }
+
+  .btn-press:active:not(:disabled) {
+    transform: translateY(2px);
+    /* 0 0 0 rather than `none` so the collapse animates; `none` can't tween. */
+    box-shadow: 0 0 0 var(--press-edge);
+  }
+
+  /*
+   * Hover lift for interactive surfaces. Gated behind a real hover-capable
+   * pointer so it never fires as a sticky state on touch.
+   */
+  .lift {
+    transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      transform: translateY(-1px);
+    }
+  }
+
+  .lift:active {
+    transform: translateY(0);
+  }
+
   /*
    * The page surface: --paper plus a faint dot grid, like engineering paper.
    * Replaces a bare `bg-paper` on each screen's outermost element.
@@ -380,6 +508,21 @@
   .budget-reveal {
     animation: none !important;
     opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /*
+   * The tactile touches lose their movement entirely. The blanket
+   * transition-duration override below only makes a transform instant — it
+   * doesn't stop the element from moving — so the transforms are cancelled
+   * by name. The button keeps its static bottom lip; it just stops depressing.
+   */
+  .btn-press,
+  .btn-press:active,
+  .btn-press:active:not(:disabled),
+  .lift,
+  .lift:hover,
+  .lift:active {
     transform: none !important;
   }
 }

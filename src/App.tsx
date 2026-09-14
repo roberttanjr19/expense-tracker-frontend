@@ -4,6 +4,7 @@ import Login from "./Login";
 import Landing from "./Landing";
 import Home from "./Home";
 import Ledger from "./Ledger";
+import Profile from "./Profile";
 
 function App() {
   const [token, setToken] = useState<string | null>(() =>
@@ -34,6 +35,10 @@ function App() {
         <Route
           path="/ledger/:year/:month"
           element={token ? <Ledger token={token} onLogout={handleLogout} /> : <Login onLogin={handleLogin} />}
+        />
+        <Route
+          path="/profile"
+          element={token ? <Profile token={token} onLogout={handleLogout} /> : <Login onLogin={handleLogin} />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

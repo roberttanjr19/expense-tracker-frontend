@@ -31,7 +31,7 @@ function LedgerPreview({
   const maxAmount = expenses.length > 0 ? Math.max(...expenses.map((e) => e.amount)) : null;
 
   return (
-    <section className="flex flex-col min-[900px]:border-l min-[900px]:border-rule min-[900px]:pl-10">
+    <section className="card flex flex-col p-5">
       <p className="eyebrow">This month</p>
 
       <div className="mt-4 flex-1">
@@ -48,7 +48,11 @@ function LedgerPreview({
               return (
                 <div
                   key={expense.id}
-                  className={`flex items-center justify-between px-3 py-2.5 text-[15px] ${
+                  // Rounded because the banding now sits inside a card's
+                  // padding rather than running full-bleed across the page.
+                  // Hover shifts the background only — these rows aren't
+                  // clickable, so they mustn't lift like something that is.
+                  className={`flex items-center justify-between rounded-[8px] px-3 py-2.5 text-[15px] transition-colors hover:bg-chip ${
                     index % 2 === 0 ? "bg-band" : ""
                   }`}
                 >
@@ -73,7 +77,7 @@ function LedgerPreview({
       <button
         type="button"
         onClick={onOpenLedger}
-        className="mt-3 flex w-full items-center justify-between px-3 py-2.5 text-[15px] text-dim hover:text-ink focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        className="mt-auto flex w-full items-center justify-between rounded-[8px] border-t border-[color:var(--card-border)] px-3 pt-3 pb-1 text-[15px] text-dim transition-colors hover:text-ink focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         <span>Open {monthLabel}&rsquo;s ledger</span>
         <span aria-hidden="true">&rarr;</span>

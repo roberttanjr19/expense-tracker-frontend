@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "./theme";
 
 interface HeaderMenuProps {
   onSignOut: () => void;
-  onManageCategories: () => void;
 }
 
 const menuItemClasses =
@@ -11,11 +11,15 @@ const menuItemClasses =
   "focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink";
 
 /**
- * Placeholder for the full app menu (later stage). For now it only has to
- * expose the two things the old unstyled header did: signing out and a
- * dark-mode toggle.
+ * The app menu: profile, dark mode, sign out.
+ *
+ * "Manage categories" used to live here; it moved to the profile page, which
+ * is the one place that kind of management now lives. Profile navigates with
+ * useNavigate rather than taking an onProfile prop, so neither call site
+ * (Home, Ledger) has to thread a handler through for it.
  */
-function HeaderMenu({ onSignOut, onManageCategories }: HeaderMenuProps) {
+function HeaderMenu({ onSignOut }: HeaderMenuProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,11 +81,11 @@ function HeaderMenu({ onSignOut, onManageCategories }: HeaderMenuProps) {
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              onManageCategories();
+              navigate("/profile");
             }}
             className={menuItemClasses}
           >
-            <span>Manage categories</span>
+            <span>Profile</span>
           </button>
           <button type="button" role="menuitem" onClick={toggleTheme} className={menuItemClasses}>
             <span>Dark mode</span>

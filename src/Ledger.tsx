@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, UserRound } from "lucide-react";
 import type { Category, CategoryBudgetStatus, Expense } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { monthName } from "./date";
 import { linkButtonClasses } from "./formStyles";
 import HeaderMenu from "./HeaderMenu";
-import CategoryManager from "./CategoryManager";
 import ThemeToggle from "./ThemeToggle";
 import PeriodStepper from "./PeriodStepper";
 import LedgerTable from "./LedgerTable";
@@ -63,8 +62,6 @@ function Ledger({ token, onLogout }: LedgerProps) {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  const [managingCategories, setManagingCategories] = useState(false);
 
   // The hook refetches on its own whenever year/month change, so loadMonth
   // stays out of it — otherwise stepping a month would fire two identical
@@ -297,7 +294,14 @@ function Ledger({ token, onLogout }: LedgerProps) {
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <HeaderMenu onSignOut={onLogout} onManageCategories={() => setManagingCategories(true)} />
+            <Link
+              to="/profile"
+              aria-label="Profile"
+              className="flex h-10 w-10 items-center justify-center rounded text-ink hover:bg-band focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              <UserRound size={18} aria-hidden="true" />
+            </Link>
+            <HeaderMenu onSignOut={onLogout} />
           </div>
         </div>
       </header>
@@ -359,14 +363,6 @@ function Ledger({ token, onLogout }: LedgerProps) {
           )}
         </main>
       )}
-
-      <CategoryManager
-        open={managingCategories}
-        onClose={() => setManagingCategories(false)}
-        token={token}
-        onLogout={onLogout}
-        onCategoriesChanged={refreshAfterChange}
-      />
     </div>
   );
 }

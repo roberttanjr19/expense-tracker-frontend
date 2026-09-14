@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import type { Category, Expense, MonthSummary } from "./types";
+import { Link, useNavigate } from "react-router-dom";
+import { UserRound } from "lucide-react";
+import type { Category, Expense } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
-import { formatMoney, formatSignedMoney } from "./money";
+import { formatMoney } from "./money";
 import { monthName } from "./date";
 import { inputClasses, linkButtonClasses, primaryButtonClasses } from "./formStyles";
 import Logo from "./Logo";
@@ -11,9 +12,6 @@ import CategoryManager from "./CategoryManager";
 import PeriodStepper from "./PeriodStepper";
 import SummaryStrip from "./SummaryStrip";
 import LedgerPreview from "./LedgerPreview";
-import PreviousMonths from "./PreviousMonths";
-import BudgetList from "./BudgetList";
-import { useBudgetStatus } from "./useBudgetStatus";
 
 interface HomeProps {
   token: string;
@@ -44,7 +42,6 @@ function Home({ token, onLogout }: HomeProps) {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [monthSummaries, setMonthSummaries] = useState<MonthSummary[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [slowLoading, setSlowLoading] = useState(false);
@@ -59,10 +56,6 @@ function Home({ token, onLogout }: HomeProps) {
 
   const [managingCategories, setManagingCategories] = useState(false);
 
-  // Refetches itself when `period` changes, so loadAll doesn't also ask for
-  // budgets — that would double the request on every step of the stepper.
-  const { budgeted, refetch: refetchBudgets } = useBudgetStatus(token, year, month, onLogout);
-
   async function loadAll() {
     setLoading(true);
     setSlowLoading(false);
@@ -73,19 +66,16 @@ function Home({ token, onLogout }: HomeProps) {
     const slowTimer = setTimeout(() => setSlowLoading(true), 3000);
 
     try {
-      const [expensesRes, categoriesRes, summaryRes] = await Promise.all([
+      const [expensesRes, categoriesRes] = await Promise.all([
         authFetch(token, `/api/expenses?year=${year}&month=${month}`, onLogout),
         authFetch(token, "/api/categories", onLogout),
-        authFetch(token, "/api/expenses/summary/months", onLogout),
       ]);
 
       if (!expensesRes.ok) throw new Error(await extractErrorMessage(expensesRes));
       if (!categoriesRes.ok) throw new Error(await extractErrorMessage(categoriesRes));
-      if (!summaryRes.ok) throw new Error(await extractErrorMessage(summaryRes));
 
       setExpenses(await expensesRes.json());
       setCategories(await categoriesRes.json());
-      setMonthSummaries(await summaryRes.json());
     } catch (err) {
       setLoadError(
         err instanceof Error ? err.message : "Couldn't load your data. Please try again."
@@ -102,21 +92,12 @@ function Home({ token, onLogout }: HomeProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
-  // Budget status rides along here because a new entry changes what's been
-  // spent against a budget, not just the month's total.
-  async function refetchExpensesAndSummary() {
-    const [expensesRes, summaryRes] = await Promise.all([
-      authFetch(token, `/api/expenses?year=${year}&month=${month}`, onLogout),
-      authFetch(token, "/api/expenses/summary/months", onLogout),
-      refetchBudgets(),
-    ]);
-    if (expensesRes.ok) setExpenses(await expensesRes.json());
-    if (summaryRes.ok) setMonthSummaries(await summaryRes.json());
-  }
-
-  /** The budget-setting panel can change budgets themselves, so both reload. */
-  async function handleCategoriesChanged() {
-    await Promise.all([loadAll(), refetchBudgets()]);
+  // Only the month's own entries: the summary-months and budget-status
+  // requests that used to ride along here fed the "vs last month" cell,
+  // Budgets and Previous months, all of which now live on /profile.
+  async function refetchExpenses() {
+    const response = await authFetch(token, `/api/expenses?year=${year}&month=${month}`, onLogout);
+    if (response.ok) setExpenses(await response.json());
   }
 
   async function handleAddExpense(e: React.FormEvent) {
@@ -142,7 +123,7 @@ function Home({ token, onLogout }: HomeProps) {
       setAmount("");
       setExpenseDate(toIsoDate(today));
       setCategoryId("");
-      await refetchExpensesAndSummary();
+      await refetchExpenses();
     } catch (err) {
       setExpenseError(
         err instanceof Error ? err.message : "Couldn't add that entry. Please try again."
@@ -153,10 +134,6 @@ function Home({ token, onLogout }: HomeProps) {
   }
 
   function handleOpenLedger() {
-    navigate(`/ledger/${year}/${month}`);
-  }
-
-  function handleOpenMonth(year: number, month: number) {
     navigate(`/ledger/${year}/${month}`);
   }
 
@@ -185,24 +162,6 @@ function Home({ token, onLogout }: HomeProps) {
     [expenses]
   );
 
-  const previousMonthDate = useMemo(
-    () => (month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }),
-    [year, month]
-  );
-  const previousMonthName = useMemo(
-    () =>
-      new Date(previousMonthDate.year, previousMonthDate.month - 1, 1).toLocaleString("en-CA", {
-        month: "long",
-      }),
-    [previousMonthDate]
-  );
-  const previousSummary = monthSummaries.find(
-    (s) => s.year === previousMonthDate.year && s.month === previousMonthDate.month
-  );
-  const vsPreviousLabel = previousSummary
-    ? formatSignedMoney(monthTotal - previousSummary.total)
-    : "—";
-
   const recentExpenses = useMemo(() => [...expenses].slice(-4).reverse(), [expenses]);
 
   const categoryIconById = useMemo(
@@ -210,24 +169,27 @@ function Home({ token, onLogout }: HomeProps) {
     [categories]
   );
 
-  const otherMonths = monthSummaries.filter((s) => !(s.year === year && s.month === month));
-  const visibleMonths = otherMonths.slice(0, 12);
-  const hasMoreMonths = otherMonths.length > 12;
-  const allTimeTotal = monthSummaries.reduce((sum, s) => sum + s.total, 0);
-
   return (
     <div className="flex min-h-screen flex-col dot-grid text-ink">
-      <header className="border-b border-rule bg-paper px-7 py-4 sm:py-5">
-        <div className="relative flex w-full flex-wrap items-center justify-between gap-y-3">
-          <div className="flex items-center gap-2">
-            <Logo size={26} className="text-ink" />
-            <span className="text-[19px] font-bold">Daybook</span>
+      {/* Not a card — a solid band the cards scroll under. */}
+      <header className="border-b border-rule bg-paper px-4 py-4 sm:px-6 sm:py-5 min-[900px]:px-8">
+        {/*
+          Three zones: 1fr | auto | 1fr. The equal side columns are what keep
+          the pill dead-centre at any width — it replaces the old absolutely
+          positioned copy AND the duplicate mobile one below it, so the
+          stepper is now rendered once instead of twice.
+        */}
+        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Logo size={26} className="shrink-0 text-ink" />
+            {/* Drops below 420px so the pill and the icons still fit on one
+                row at 320px without the header scrolling sideways. */}
+            <span className="hidden text-[19px] font-bold min-[420px]:inline">Daybook</span>
           </div>
 
-          {/* Desktop/tablet: true-centered on the row via absolute positioning,
-              so an uneven left/right zone width doesn't skew it off-center. */}
-          <div className="hidden min-[700px]:absolute min-[700px]:left-1/2 min-[700px]:top-1/2 min-[700px]:flex min-[700px]:-translate-x-1/2 min-[700px]:-translate-y-1/2">
+          <div className="flex min-w-0 justify-center">
             <PeriodStepper
+              variant="raised"
               monthLabel={monthLabel}
               year={year}
               nextDisabled={isAtOrAfterCurrentMonth}
@@ -236,17 +198,17 @@ function Home({ token, onLogout }: HomeProps) {
             />
           </div>
 
-          <HeaderMenu onSignOut={onLogout} onManageCategories={() => setManagingCategories(true)} />
-
-          {/* Mobile: its own full-width row below the wordmark/hamburger row. */}
-          <div className="flex w-full justify-center min-[700px]:hidden">
-            <PeriodStepper
-              monthLabel={monthLabel}
-              year={year}
-              nextDisabled={isAtOrAfterCurrentMonth}
-              onPrev={goToPrevMonth}
-              onNext={goToNextMonth}
-            />
+          {/* A real <Link>, not a button+navigate, so it opens in a new tab
+              on middle-click and shows its target on hover like a link should. */}
+          <div className="flex min-w-0 items-center justify-end gap-1">
+            <Link
+              to="/profile"
+              aria-label="Profile"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-ink hover:bg-band focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              <UserRound size={18} aria-hidden="true" />
+            </Link>
+            <HeaderMenu onSignOut={onLogout} />
           </div>
         </div>
       </header>
@@ -265,22 +227,23 @@ function Home({ token, onLogout }: HomeProps) {
           <p className="text-[15px] text-danger">{loadError}</p>
         </div>
       ) : (
-        <main className="mx-auto bg-paper flex w-full max-w-[640px] flex-1 flex-col px-4 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
-          <SummaryStrip
-            spentLabel={formatMoney(monthTotal)}
-            previousMonthName={previousMonthName}
-            vsPreviousLabel={vsPreviousLabel}
-            entryCount={expenses.length}
-          />
+        <main
+          // No bg-paper here any more. It was added so the dot grid never sat
+          // behind text; the cards below now carry all the text on their own
+          // opaque surfaces, so the page can go transparent and the dots show
+          // between and around them — which is the whole point of the layout.
+          className="mx-auto w-full max-w-[640px] flex-1 px-4 py-[var(--card-gap)] sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8"
+        >
+          <SummaryStrip spentLabel={formatMoney(monthTotal)} entryCount={expenses.length} />
 
-          {/* Directly under the summary strip: this is a summary of the same
-              selected month, and it's what you'd want to see before typing a
-              new entry — below "Previous months" would bury it. Renders
-              nothing at all when no category has a budget. */}
-          <BudgetList budgets={budgeted} />
-
-          <div className="space-y-8 py-8 min-[900px]:grid min-[900px]:grid-cols-[42%_1fr] min-[900px]:gap-x-10 min-[900px]:space-y-0">
-            <section>
+          {/*
+            1.1fr / 1fr — an intentional ~55/45 split giving the form the wider
+            column. Grid's default align-items: stretch is what makes both
+            cards equal height, which is what lets the preview's footer link
+            line up with the bottom of the form card across the gap.
+          */}
+          <div className="mt-[var(--card-gap)] grid gap-[var(--card-gap)] min-[800px]:grid-cols-[1.1fr_1fr]">
+            <section className="card p-5">
               <p className="eyebrow">What did you spend?</p>
 
               <form onSubmit={handleAddExpense} className="mt-4 space-y-3 text-left">
@@ -386,7 +349,7 @@ function Home({ token, onLogout }: HomeProps) {
                 <button
                   type="submit"
                   disabled={submitting || categories.length === 0}
-                  className={primaryButtonClasses}
+                  className={`${primaryButtonClasses} btn-press`}
                 >
                   {submitting ? "Adding…" : "Add entry"}
                 </button>
@@ -400,13 +363,6 @@ function Home({ token, onLogout }: HomeProps) {
               onOpenLedger={handleOpenLedger}
             />
           </div>
-
-          <PreviousMonths
-            months={visibleMonths}
-            hasMore={hasMoreMonths}
-            allTimeTotal={allTimeTotal}
-            onOpenMonth={handleOpenMonth}
-          />
         </main>
       )}
 
@@ -415,7 +371,7 @@ function Home({ token, onLogout }: HomeProps) {
         onClose={() => setManagingCategories(false)}
         token={token}
         onLogout={onLogout}
-        onCategoriesChanged={handleCategoriesChanged}
+        onCategoriesChanged={loadAll}
       />
     </div>
   );
