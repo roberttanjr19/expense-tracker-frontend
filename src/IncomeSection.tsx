@@ -1,9 +1,14 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import type { Income } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { formatMoney } from "./money";
 import { monthName } from "./date";
-import { inputClasses, primaryButtonBoldClasses } from "./formStyles";
+import {
+  inputClasses,
+  primaryButtonBoldClasses,
+  primaryButtonBoldInlineClasses,
+} from "./formStyles";
 import { useMonthlyIncome } from "./useMonthlyIncome";
 import IncomeRow, { type IncomeDraft } from "./IncomeRow";
 
@@ -20,6 +25,9 @@ const emptyDraft: IncomeDraft = {
   incomeDate: "",
   description: "",
 };
+
+/** Ties the toggle button's aria-controls to the collapsible region's id. */
+const ADD_FORM_ID = "income-add-form";
 
 function toIsoDate(date: Date): string {
   const year = date.getFullYear();
@@ -51,6 +59,8 @@ function IncomeSection({ token, onLogout, year, month }: IncomeSectionProps) {
   const [description, setDescription] = useState("");
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
+  // The list is the section's default view; the add form opens on demand.
+  const [addFormOpen, setAddFormOpen] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<IncomeDraft>(emptyDraft);
@@ -82,6 +92,7 @@ function IncomeSection({ token, onLogout, year, month }: IncomeSectionProps) {
       });
       if (!response.ok) throw new Error(await extractErrorMessage(response));
 
+      setAddFormOpen(false);
       setSource("");
       setAmount("");
       setDescription("");
@@ -174,105 +185,144 @@ function IncomeSection({ token, onLogout, year, month }: IncomeSectionProps) {
   }
 
   return (
-    <section className="border-b border-rule py-8">
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="eyebrow">Income</p>
-        <p className="eyebrow whitespace-nowrap text-accent">
-          {label} &middot;{" "}
-          <span className="font-mono normal-case tracking-normal tabular-nums">
+    <section className="card p-5">
+      {/* items-start, not items-baseline: the left column is now two lines and
+          the button belongs against the top of it. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow">Income &middot; {label}</p>
+          {/* clamp so a long total and the button still share one row at 320px. */}
+          <p className="mt-1 font-mono text-[clamp(22px,6vw,28px)] tabular-nums text-accent">
             {formatMoney(total)}
-          </span>
-        </p>
-      </div>
-
-      <form onSubmit={handleAdd} className="mt-4 space-y-3">
-        {/* Single column at 320px; pairs up once there's room for two fields. */}
-        <div className="grid gap-3 min-[520px]:grid-cols-2">
-          <div>
-            <label htmlFor="income-source" className="sr-only">
-              Source
-            </label>
-            <input
-              id="income-source"
-              type="text"
-              placeholder="Source (e.g. Salary)"
-              value={source}
-              onChange={(e) => {
-                setSource(e.target.value);
-                setAddError("");
-              }}
-              required
-              className={inputClasses}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="income-amount" className="sr-only">
-              Amount
-            </label>
-            <input
-              id="income-amount"
-              type="number"
-              step="0.01"
-              min="0"
-              inputMode="decimal"
-              placeholder="Amount"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setAddError("");
-              }}
-              required
-              className={`${inputClasses} font-mono tabular-nums`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="income-date" className="sr-only">
-              Date
-            </label>
-            <input
-              id="income-date"
-              type="date"
-              value={incomeDate}
-              onChange={(e) => {
-                setIncomeDate(e.target.value);
-                setAddError("");
-              }}
-              required
-              className={`${inputClasses} date-input`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="income-description" className="sr-only">
-              Description (optional)
-            </label>
-            <input
-              id="income-description"
-              type="text"
-              placeholder="Description (optional)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={inputClasses}
-            />
-          </div>
+          </p>
         </div>
 
-        {addError && (
-          <p role="alert" className="text-[13px] text-danger">
-            {addError}
-          </p>
-        )}
-
         <button
-          type="submit"
-          disabled={adding}
-          className={`${primaryButtonBoldClasses} btn-press min-[520px]:w-auto min-[520px]:px-5`}
+          type="button"
+          onClick={() => {
+            // Dropping a stale error on close means reopening starts clean.
+            if (addFormOpen) setAddError("");
+            setAddFormOpen((open) => !open);
+          }}
+          aria-expanded={addFormOpen}
+          aria-controls={ADD_FORM_ID}
+          className={`${primaryButtonBoldInlineClasses} btn-press flex shrink-0 items-center gap-1.5`}
         >
-          {adding ? "Adding…" : "Add income"}
+          {/* Rotating the plus into an x is the affordance that says this
+              button toggles rather than repeats. Decorative — aria-expanded is
+              what actually carries the state to assistive tech. */}
+          <Plus
+            size={16}
+            aria-hidden="true"
+            className={`transition-transform duration-200 ${addFormOpen ? "rotate-45" : ""}`}
+          />
+          Add income
         </button>
-      </form>
+      </div>
+
+      {/*
+        inert (React 19) on top of the visual collapse: grid-template-rows: 0fr
+        clips the form but leaves its inputs in the tab order and the
+        accessibility tree, so a keyboard user would tab into a form they
+        can't see. inert removes it from both while closed.
+      */}
+      <div
+        id={ADD_FORM_ID}
+        data-open={addFormOpen}
+        inert={!addFormOpen}
+        className="collapsible"
+      >
+        <div>
+          <form onSubmit={handleAdd} className="space-y-3 pt-4">
+            {/* Single column at 320px; pairs up once there's room for two fields. */}
+            <div className="grid gap-3 min-[520px]:grid-cols-2">
+              <div>
+                <label htmlFor="income-source" className="sr-only">
+                  Source
+                </label>
+                <input
+                  id="income-source"
+                  type="text"
+                  placeholder="Source (e.g. Salary)"
+                  value={source}
+                  onChange={(e) => {
+                    setSource(e.target.value);
+                    setAddError("");
+                  }}
+                  required
+                  className={inputClasses}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="income-amount" className="sr-only">
+                  Amount
+                </label>
+                <input
+                  id="income-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputMode="decimal"
+                  placeholder="Amount"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setAddError("");
+                  }}
+                  required
+                  className={`${inputClasses} font-mono tabular-nums`}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="income-date" className="sr-only">
+                  Date
+                </label>
+                <input
+                  id="income-date"
+                  type="date"
+                  value={incomeDate}
+                  onChange={(e) => {
+                    setIncomeDate(e.target.value);
+                    setAddError("");
+                  }}
+                  required
+                  className={`${inputClasses} date-input`}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="income-description" className="sr-only">
+                  Description (optional)
+                </label>
+                <input
+                  id="income-description"
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className={inputClasses}
+                />
+              </div>
+            </div>
+
+            {addError && (
+              <p role="alert" className="text-[13px] text-danger">
+                {addError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={adding}
+              className={`${primaryButtonBoldClasses} btn-press min-[520px]:w-auto min-[520px]:px-5`}
+            >
+              {adding ? "Saving…" : "Save income"}
+            </button>
+          </form>
+        </div>
+      </div>
 
       {/* Only the delete case surfaces here. While a row is open for editing it
           renders this same message inline instead, so gating on editingId
@@ -293,7 +343,7 @@ function IncomeSection({ token, onLogout, year, month }: IncomeSectionProps) {
         <div className="mt-4 rounded-[10px] border-[0.5px] border-rule bg-paper px-4 py-6 text-center">
           <p className="text-[15px] text-dim">No income recorded for {label}.</p>
           <p className="mt-1 text-[13px] text-dim">
-            Add your first entry above to see your net for the month.
+            Use &ldquo;Add income&rdquo; above to record your first entry.
           </p>
         </div>
       ) : (

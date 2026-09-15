@@ -49,7 +49,7 @@ function PreviousMonths({ months, hasMore, allTimeTotal, onOpenMonth }: Previous
   const groups = groupByYear(months);
 
   return (
-    <section className="border-t border-rule py-8">
+    <section className="card p-5">
       <div className="flex items-baseline justify-between gap-4">
         <p className="eyebrow">Previous months</p>
         <p className="eyebrow whitespace-nowrap">

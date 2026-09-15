@@ -401,6 +401,38 @@
     animation-delay: 0.4s;
   }
 
+  /*
+   * A region that expands and collapses to its own natural height.
+   *
+   * grid-template-rows 0fr -> 1fr rather than a max-height transition. A
+   * max-height animation needs a hard-coded ceiling, and this content has no
+   * single honest one: the income form is ~300px tall stacked at 320px but
+   * only ~150px in its two-column desktop layout. Any ceiling that clears the
+   * mobile height overshoots desktop by 2x, and the overshoot is dead time —
+   * the first chunk of the collapse plays with nothing visibly moving. 1fr
+   * resolves to the real content height at every width, so both directions
+   * are honest. Same 280ms and the same --ease-out the rest of the app uses.
+   *
+   * The child needs min-height: 0 (a grid item won't shrink below its content
+   * without it) and overflow: hidden (so clipped content doesn't spill).
+   */
+  .collapsible {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 280ms var(--ease-out), opacity 280ms var(--ease-out);
+  }
+
+  .collapsible > * {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .collapsible[data-open="true"] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
   /* The inline "over budget" detail a ledger row reveals when its category
      chip is clicked. Applied to a div inside the cell rather than to the
      <tr>/row itself, because transforms on table rows aren't reliable. */
@@ -593,6 +625,13 @@
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  /* Expand/collapse becomes an instant show/hide. The blanket duration
+     override below would already make it effectively instant; naming it keeps
+     that intent explicit rather than incidental. */
+  .collapsible {
+    transition: none !important;
   }
 
   /* The reveal appears instantly instead of sliding. Named explicitly rather

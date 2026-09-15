@@ -15,14 +15,27 @@ export const linkButtonClasses =
  * stylesheet and would win the cascade no matter which class came last in the
  * className string. Choosing exactly one here avoids that trap.
  */
-const primaryButtonBase =
-  "h-10 w-full rounded bg-ink px-4 text-[15px] text-paper hover:opacity-90 disabled:opacity-50 " +
+const primaryButtonCore =
+  "h-10 rounded bg-ink px-4 text-[15px] text-paper hover:opacity-90 disabled:opacity-50 " +
   "focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+const primaryButtonBase = `${primaryButtonCore} w-full`;
 
 export const primaryButtonClasses = `${primaryButtonBase} font-medium`;
 
 /** Same button, weight 700 — home's "Add entry". */
 export const primaryButtonBoldClasses = `${primaryButtonBase} font-bold`;
+
+/**
+ * Bold primary sized to its own content, for a button sitting inline beside
+ * other content rather than filling a form column.
+ *
+ * A separate export rather than `primaryButtonBoldClasses + "w-auto"` for the
+ * same reason the weight is chosen here: Tailwind emits width utilities
+ * alphabetically, so `.w-full` lands after `.w-auto` and would win the cascade
+ * however the className string is ordered.
+ */
+export const primaryButtonBoldInlineClasses = `${primaryButtonCore} font-bold`;
 
 /**
  * A quiet 28px icon-only control — row edit/delete affordances. Always pair

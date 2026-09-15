@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Tags } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { MonthSummary, User } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import HeaderMenu from "./HeaderMenu";
@@ -124,42 +124,44 @@ function Profile({ token, onLogout }: ProfileProps) {
           <p className="text-[15px] text-danger">{loadError}</p>
         </div>
       ) : (
-        <main className="mx-auto bg-paper w-full max-w-[640px] flex-1 px-4 sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
-          <section className="border-b border-rule py-8">
-            <p className="eyebrow">Signed in as</p>
-            <p className="mt-2 text-[19px] font-medium">{user?.name}</p>
-            {/* break-all so a long address wraps instead of widening the
-                page at 320px. */}
-            <p className="mt-0.5 break-all text-[15px] text-dim">{user?.email}</p>
-          </section>
-
-          <IncomeSection token={token} onLogout={onLogout} year={year} month={month} />
-
-          <BudgetList budgets={budgeted} />
-
-          <section className="py-8">
-            <p className="eyebrow">Categories</p>
-            <button
-              type="button"
-              onClick={() => setManagingCategories(true)}
-              className="mt-4 flex w-full items-center justify-between rounded-[10px] border-[0.5px] border-rule bg-paper px-4 py-3 text-left transition-colors hover:bg-band focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-            >
-              <span className="flex items-center gap-2.5">
-                <Tags size={16} className="shrink-0 text-dim" aria-hidden="true" />
-                <span className="text-[15px]">Manage categories</span>
+        // No bg-paper: the dot grid shows between and around the cards, which
+        // is the whole point of the layout. Same measure, padding and
+        // --card-gap rhythm as home, so the two pages sit on one grid.
+        <main className="mx-auto w-full max-w-[640px] flex-1 px-4 py-[var(--card-gap)] sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8">
+          <div className="flex flex-col gap-[var(--card-gap)]">
+            <section className="card flex items-center gap-4 p-5">
+              {/* Decorative: the name it's derived from is read out right
+                  beside it, so there's nothing here for a screen reader. */}
+              <span
+                aria-hidden="true"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-[20px] font-bold text-paper"
+              >
+                {user?.name?.trim().charAt(0).toUpperCase()}
               </span>
-              <span aria-hidden="true" className="text-dim">
-                &rarr;
-              </span>
-            </button>
-          </section>
 
-          <PreviousMonths
-            months={visibleMonths}
-            hasMore={hasMoreMonths}
-            allTimeTotal={allTimeTotal}
-            onOpenMonth={(y, m) => navigate(`/ledger/${y}/${m}`)}
-          />
+              <div className="min-w-0">
+                <p className="eyebrow">Signed in as</p>
+                <p className="mt-1 text-[19px] font-bold">{user?.name}</p>
+                {/* break-all so a long address wraps instead of widening the
+                    page at 320px. */}
+                <p className="mt-0.5 break-all text-[15px] text-dim">{user?.email}</p>
+              </div>
+            </section>
+
+            <IncomeSection token={token} onLogout={onLogout} year={year} month={month} />
+
+            <BudgetList
+              budgets={budgeted}
+              onManageCategories={() => setManagingCategories(true)}
+            />
+
+            <PreviousMonths
+              months={visibleMonths}
+              hasMore={hasMoreMonths}
+              allTimeTotal={allTimeTotal}
+              onOpenMonth={(y, m) => navigate(`/ledger/${y}/${m}`)}
+            />
+          </div>
         </main>
       )}
 
