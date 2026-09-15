@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserRound } from "lucide-react";
-import type { Category, Expense } from "./types";
+import type { Category, Expense, Income } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
-import { formatMoney } from "./money";
 import { monthName } from "./date";
 import { inputClasses, linkButtonClasses, primaryButtonBoldClasses } from "./formStyles";
 import Logo from "./Logo";
@@ -43,6 +42,7 @@ function Home({ token, onLogout }: HomeProps) {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [income, setIncome] = useState<Income[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [slowLoading, setSlowLoading] = useState(false);
@@ -67,16 +67,19 @@ function Home({ token, onLogout }: HomeProps) {
     const slowTimer = setTimeout(() => setSlowLoading(true), 3000);
 
     try {
-      const [expensesRes, categoriesRes] = await Promise.all([
+      const [expensesRes, categoriesRes, incomeRes] = await Promise.all([
         authFetch(token, `/api/expenses?year=${year}&month=${month}`, onLogout),
         authFetch(token, "/api/categories", onLogout),
+        authFetch(token, `/api/income?year=${year}&month=${month}`, onLogout),
       ]);
 
       if (!expensesRes.ok) throw new Error(await extractErrorMessage(expensesRes));
       if (!categoriesRes.ok) throw new Error(await extractErrorMessage(categoriesRes));
+      if (!incomeRes.ok) throw new Error(await extractErrorMessage(incomeRes));
 
       setExpenses(await expensesRes.json());
       setCategories(await categoriesRes.json());
+      setIncome(await incomeRes.json());
     } catch (err) {
       setLoadError(
         err instanceof Error ? err.message : "Couldn't load your data. Please try again."
@@ -163,6 +166,11 @@ function Home({ token, onLogout }: HomeProps) {
     [expenses]
   );
 
+  const monthIncome = useMemo(
+    () => income.reduce((sum, i) => sum + i.amount, 0),
+    [income]
+  );
+
   const recentExpenses = useMemo(() => [...expenses].slice(-4).reverse(), [expenses]);
 
   const categoryIconById = useMemo(
@@ -237,7 +245,7 @@ function Home({ token, onLogout }: HomeProps) {
           // between and around them — which is the whole point of the layout.
           className="mx-auto w-full max-w-[640px] flex-1 px-4 py-[var(--card-gap)] sm:px-6 min-[900px]:max-w-[1100px] min-[900px]:px-8"
         >
-          <SummaryStrip spentLabel={formatMoney(monthTotal)} entryCount={expenses.length} />
+          <SummaryStrip income={monthIncome} spent={monthTotal} />
 
           {/*
             1.1fr / 1fr — an intentional ~55/45 split giving the form the wider

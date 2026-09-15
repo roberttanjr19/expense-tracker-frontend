@@ -49,3 +49,15 @@ export interface Expense {
     name: string;
   };
 }
+
+/**
+ * One income entry, from GET /api/income?year&month (oldest first).
+ * `description` is optional on the way in (POST/PUT) and may come back null.
+ */
+export interface Income {
+  id: number;
+  amount: number;
+  source: string;
+  description?: string | null;
+  incomeDate: string;
+}

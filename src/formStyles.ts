@@ -23,3 +23,20 @@ export const primaryButtonClasses = `${primaryButtonBase} font-medium`;
 
 /** Same button, weight 700 — home's "Add entry". */
 export const primaryButtonBoldClasses = `${primaryButtonBase} font-bold`;
+
+/**
+ * A quiet 28px icon-only control — row edit/delete affordances. Always pair
+ * with an aria-label, since there's no text to announce.
+ *
+ * LedgerRow declares its own identical copy locally. Left alone deliberately:
+ * this step must not touch the expense feature, so the two are duplicated for
+ * now rather than risking a shared edit there. Worth deduping later.
+ */
+export const iconButtonClasses =
+  "flex h-7 w-7 items-center justify-center rounded text-dim hover:bg-band hover:text-ink disabled:pointer-events-none disabled:opacity-50 " +
+  "focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+/** Outline counterpart to primaryButtonClasses — the Cancel half of a save/cancel pair. */
+export const secondaryButtonClasses =
+  "h-10 rounded border border-rule px-4 text-[15px] font-medium text-ink hover:bg-band disabled:opacity-50 " +
+  "focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";

@@ -8,6 +8,7 @@ import ColdStartLoader from "./ColdStartLoader";
 import ThemeToggle from "./ThemeToggle";
 import CategoryManager from "./CategoryManager";
 import BudgetList from "./BudgetList";
+import IncomeSection from "./IncomeSection";
 import PreviousMonths from "./PreviousMonths";
 import { useBudgetStatus } from "./useBudgetStatus";
 
@@ -131,6 +132,8 @@ function Profile({ token, onLogout }: ProfileProps) {
                 page at 320px. */}
             <p className="mt-0.5 break-all text-[15px] text-dim">{user?.email}</p>
           </section>
+
+          <IncomeSection token={token} onLogout={onLogout} year={year} month={month} />
 
           <BudgetList budgets={budgeted} />
 
