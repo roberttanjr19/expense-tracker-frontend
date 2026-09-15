@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { API_BASE, extractErrorMessage } from "./api";
 import SampleLedger from "./SampleLedger";
@@ -24,7 +24,13 @@ const linkButtonClasses =
   "focus-visible:outline-offset-2 focus-visible:outline-ink";
 
 function Login({ onLogin }: LoginProps) {
-  const [mode, setMode] = useState<Mode>("login");
+  // Mode lives in the URL ("/login?mode=register"), not in local state, so the
+  // landing page's "Create account" / "Get started" links can land the user
+  // straight in register mode. Deriving it here rather than seeding useState
+  // keeps one source of truth: a refresh, a shared link or the Back button all
+  // land on the mode the URL actually says.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mode: Mode = searchParams.get("mode") === "register" ? "register" : "login";
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("PERSONAL");
   const [email, setEmail] = useState("");
@@ -73,7 +79,7 @@ function Login({ onLogin }: LoginProps) {
 
   function toggleMode() {
     setError("");
-    setMode(mode === "login" ? "register" : "login");
+    setSearchParams(mode === "login" ? { mode: "register" } : {}, { replace: true });
   }
 
   // Staggered delay for the form's entrance animation. Indices are explicit
@@ -198,9 +204,9 @@ function Login({ onLogin }: LoginProps) {
             >
               {mode === "login" ? (
                 <>
-                  No account?{" "}
+                  Don&apos;t have an account?{" "}
                   <button type="button" onClick={toggleMode} className={linkButtonClasses}>
-                    Create one
+                    Register here
                   </button>
                 </>
               ) : (

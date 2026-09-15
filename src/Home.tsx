@@ -5,13 +5,14 @@ import type { Category, Expense } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import { formatMoney } from "./money";
 import { monthName } from "./date";
-import { inputClasses, linkButtonClasses, primaryButtonClasses } from "./formStyles";
+import { inputClasses, linkButtonClasses, primaryButtonBoldClasses } from "./formStyles";
 import Logo from "./Logo";
 import HeaderMenu from "./HeaderMenu";
 import CategoryManager from "./CategoryManager";
 import PeriodStepper from "./PeriodStepper";
 import SummaryStrip from "./SummaryStrip";
 import LedgerPreview from "./LedgerPreview";
+import ColdStartLoader from "./ColdStartLoader";
 
 interface HomeProps {
   token: string;
@@ -174,20 +175,29 @@ function Home({ token, onLogout }: HomeProps) {
       {/* Not a card — a solid band the cards scroll under. */}
       <header className="border-b border-rule bg-paper px-4 py-4 sm:px-6 sm:py-5 min-[900px]:px-8">
         {/*
-          Three zones: 1fr | auto | 1fr. The equal side columns are what keep
-          the pill dead-centre at any width — it replaces the old absolutely
-          positioned copy AND the duplicate mobile one below it, so the
-          stepper is now rendered once instead of twice.
+          Desktop (>=640px): three zones, 1fr | auto | 1fr. The equal side
+          columns are what keep the pill dead-centre at any width — it replaces
+          the old absolutely positioned copy AND the duplicate mobile one below
+          it, so the stepper is now rendered once instead of twice.
+
+          Mobile: two columns and two rows instead. The pill is
+          whitespace-nowrap and can't shrink, so on a narrow screen the middle
+          `auto` track pushed the three zones wider than the viewport and the
+          pill collided with the wordmark. `order-last` moves it after the
+          actions in grid auto-placement, so it wraps onto a second row
+          spanning both columns — logo left and icons right above it, pill
+          centred below. Nothing overlaps and nothing scrolls sideways.
         */}
-        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="grid w-full grid-cols-2 items-center gap-x-2 gap-y-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-y-0">
           <div className="flex min-w-0 items-center gap-2">
             <Logo size={26} className="shrink-0 text-ink" />
-            {/* Drops below 420px so the pill and the icons still fit on one
-                row at 320px without the header scrolling sideways. */}
+            {/* Still hidden under 420px. The pill no longer shares this row at
+                that width, so this is now only about keeping the logo and the
+                action icons comfortable on the narrowest phones. */}
             <span className="hidden text-[19px] font-bold min-[420px]:inline">Daybook</span>
           </div>
 
-          <div className="flex min-w-0 justify-center">
+          <div className="order-last col-span-2 flex min-w-0 justify-center sm:order-none sm:col-span-1">
             <PeriodStepper
               variant="raised"
               monthLabel={monthLabel}
@@ -214,14 +224,7 @@ function Home({ token, onLogout }: HomeProps) {
       </header>
 
       {loading ? (
-        <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center gap-2 px-4 text-center">
-          <p className="text-[15px] text-dim">Loading your ledger&hellip;</p>
-          {slowLoading && (
-            <p className="max-w-xs text-sm text-dim">
-              Waking the server up &mdash; this takes up to a minute on first load.
-            </p>
-          )}
-        </div>
+        <ColdStartLoader quietLabel="Loading your ledger…" slow={slowLoading} />
       ) : loadError ? (
         <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center px-4 text-center">
           <p className="text-[15px] text-danger">{loadError}</p>
@@ -244,7 +247,7 @@ function Home({ token, onLogout }: HomeProps) {
           */}
           <div className="mt-[var(--card-gap)] grid gap-[var(--card-gap)] min-[800px]:grid-cols-[1.1fr_1fr]">
             <section className="card p-5">
-              <p className="eyebrow">What did you spend?</p>
+              <p className="eyebrow font-bold">What did you spend?</p>
 
               <form onSubmit={handleAddExpense} className="mt-4 space-y-3 text-left">
                 <div>
@@ -336,7 +339,7 @@ function Home({ token, onLogout }: HomeProps) {
                       setExpenseError("");
                     }}
                     required
-                    className={inputClasses}
+                    className={`${inputClasses} date-input`}
                   />
                 </div>
 
@@ -349,7 +352,7 @@ function Home({ token, onLogout }: HomeProps) {
                 <button
                   type="submit"
                   disabled={submitting || categories.length === 0}
-                  className={`${primaryButtonClasses} btn-press`}
+                  className={`${primaryButtonBoldClasses} btn-press`}
                 >
                   {submitting ? "Adding…" : "Add entry"}
                 </button>

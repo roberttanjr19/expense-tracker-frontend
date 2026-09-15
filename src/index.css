@@ -334,6 +334,73 @@
     animation: landing-fade-rise 300ms var(--ease-out) both;
   }
 
+  /*
+   * A date input that actually obeys its container.
+   *
+   * <input type="date"> renders a shadow-DOM row (the date segments plus the
+   * calendar indicator) that carries its own intrinsic width. WebKit — iOS
+   * Safari especially — sizes the control to that content and ignores
+   * width: 100%, so the field's border runs past the edge of the card it sits
+   * in. Pinning box-sizing, clearing the intrinsic minimum and capping the
+   * maximum makes it match the plain text inputs above it exactly.
+   *
+   * Scoped to a class rather than an `input[type="date"]` element rule on
+   * purpose: the ledger's inline row editors use date inputs too, inside table
+   * cells, and must keep sizing the way they do now.
+   */
+  .date-input {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  /* appearance: none makes iOS centre the value in the field; this puts it back
+     flush left, in line with the Description and Amount placeholders. */
+  .date-input::-webkit-date-and-time-value {
+    text-align: left;
+    min-width: 0;
+  }
+
+  /* Holds the calendar icon against the inside right edge instead of letting it
+     push the control wider. Its glyph colour still follows the color-scheme set
+     on :root, so it stays legible in both themes with no extra rule. */
+  .date-input::-webkit-calendar-picker-indicator {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  /*
+   * The three rippling dots in ColdStartLoader.
+   *
+   * display: block because these are <span>s — as flex children they'd be
+   * blockified anyway, but stating it means the class still works if it's ever
+   * used outside a flex row.
+   *
+   * --color-dim is the same token the supporting copy uses, so the dots carry
+   * the theme with them: dark grey on paper in light mode, light grey on the
+   * near-black card in dark mode, with no dark: variant needed.
+   */
+  .loading-dot {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background-color: var(--color-dim);
+    animation: loading-dot-pulse 1.2s var(--ease-in-out) infinite;
+  }
+
+  /* The stagger is what turns three synchronised blinks into a ripple. */
+  .loading-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .loading-dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
   /* The inline "over budget" detail a ledger row reveals when its category
      chip is clicked. Applied to a div inside the cell rather than to the
      <tr>/row itself, because transforms on table rows aren't reliable. */
@@ -471,6 +538,18 @@
   }
 }
 
+@keyframes loading-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
 @keyframes budget-reveal {
   from {
     opacity: 0;
@@ -500,6 +579,20 @@
   .landing-anim {
     animation: none !important;
     opacity: 1 !important;
+  }
+
+  /*
+   * The dots stop moving entirely and sit at full opacity — a static row of
+   * three, still legible as "something is happening", with no pulse. Named
+   * explicitly rather than left to the blanket duration override below: that
+   * rule only makes the animation finish instantly, which would park the dots
+   * at whatever the final keyframe says (0.25 opacity) and leave them looking
+   * disabled rather than static.
+   */
+  .loading-dot {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 
   /* The reveal appears instantly instead of sliding. Named explicitly rather

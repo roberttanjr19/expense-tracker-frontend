@@ -14,12 +14,12 @@ function SummaryStrip({ spentLabel, entryCount }: SummaryStripProps) {
     <section className="card">
       <div className="grid grid-cols-2">
         <div className="px-4 py-6 text-center sm:px-6">
-          <p className="eyebrow">Spent</p>
+          <p className="eyebrow font-bold">Spent</p>
           <p className="mt-1 font-mono text-[22px] tabular-nums">{spentLabel}</p>
         </div>
 
         <div className="border-l border-[color:var(--card-border)] px-4 py-6 text-center sm:px-6">
-          <p className="eyebrow">Entries</p>
+          <p className="eyebrow font-bold">Entries</p>
           <p className="mt-1 font-mono text-[22px] tabular-nums">{entryCount}</p>
         </div>
       </div>

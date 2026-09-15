@@ -4,6 +4,7 @@ import { ArrowLeft, Tags } from "lucide-react";
 import type { MonthSummary, User } from "./types";
 import { authFetch, extractErrorMessage } from "./api";
 import HeaderMenu from "./HeaderMenu";
+import ColdStartLoader from "./ColdStartLoader";
 import ThemeToggle from "./ThemeToggle";
 import CategoryManager from "./CategoryManager";
 import BudgetList from "./BudgetList";
@@ -116,14 +117,7 @@ function Profile({ token, onLogout }: ProfileProps) {
       </header>
 
       {loading ? (
-        <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center gap-2 px-4 text-center">
-          <p className="text-[15px] text-dim">Loading&hellip;</p>
-          {slowLoading && (
-            <p className="max-w-xs text-sm text-dim">
-              Waking the server up &mdash; this takes up to a minute on first load.
-            </p>
-          )}
-        </div>
+        <ColdStartLoader quietLabel="Loading…" slow={slowLoading} />
       ) : loadError ? (
         <div className="flex min-h-[calc(100dvh-80px)] flex-col bg-paper items-center justify-center px-4 text-center">
           <p className="text-[15px] text-danger">{loadError}</p>

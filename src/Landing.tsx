@@ -30,7 +30,7 @@ function Landing() {
               Sign in
             </Link>
             <Link
-              to="/login"
+              to="/login?mode=register"
               className="landing-btn rounded bg-ink px-2.5 py-2 text-[13px] font-medium text-paper hover:opacity-90 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:px-4 sm:text-[14px]"
             >
               Create account
@@ -55,12 +55,12 @@ function Landing() {
           className="landing-anim mt-4 max-w-[46ch] text-[16px] text-dim sm:text-[17px]"
           style={entranceStyle(HERO_BASE_DELAY_MS + 60)}
         >
-          A running record of what you spend — logged, sorted into categories, and summed as
-          you go.
+          A running record of everything you spend, sorted into categories and summed as you
+          go.
         </p>
 
         <Link
-          to="/login"
+          to="/login?mode=register"
           className="landing-btn landing-anim mt-8 rounded bg-ink px-6 py-3 text-[15px] font-medium text-paper hover:opacity-90 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           style={entranceStyle(HERO_BASE_DELAY_MS + 120)}
         >
