@@ -71,6 +71,25 @@
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 10px 30px -18px rgba(0, 0, 0, 0.16);
   --card-gap: 16px;
 
+  /*
+   * BREAKDOWN DONUT RAMP — a SEQUENTIAL scale, not a categorical one. Shade
+   * encodes magnitude: darkest slice = biggest spend, stepping lighter down to
+   * the smallest. Deliberately greyscale, because --accent is reserved as the
+   * app's one signal colour and a spending breakdown is not a signal.
+   *
+   * Stepped evenly in OKLab lightness (~0.09 per step) rather than by eye, so
+   * no two adjacent arcs collapse into each other. The lightest steps fall
+   * below 3:1 against the card, which is why the legend beside the donut
+   * carries a swatch, a name, an amount and a percentage — identity never
+   * rests on the fill alone.
+   */
+  --chart-shade-1: #1C1C1A;
+  --chart-shade-2: #3E3D39;
+  --chart-shade-3: #605F58;
+  --chart-shade-4: #828178;
+  --chart-shade-5: #9E9D95;
+  --chart-shade-6: #B8B7B0;
+
   /* The solid bottom lip under a pressable button. Translucent black reads
      correctly in both themes: under the near-black light button it's a darker
      edge, under the near-white dark button it's a cast shadow. */
@@ -117,6 +136,20 @@
   --card-border: rgba(255, 255, 255, 0.08);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -18px rgba(0, 0, 0, 0.6);
   --press-edge: rgba(0, 0, 0, 0.35);
+
+  /*
+   * The donut ramp inverted, not merely flipped: on a #1C1C1A card the biggest
+   * slice is the LIGHTEST, stepping darker. Re-stepped against the dark card
+   * rather than reusing the light values, which would put the biggest slice at
+   * the same colour as the surface it sits on. Floored at #484741 so the
+   * faintest arc still separates from the card.
+   */
+  --chart-shade-1: #E4E4E1;
+  --chart-shade-2: #C2C1BC;
+  --chart-shade-3: #A09F99;
+  --chart-shade-4: #7E7D76;
+  --chart-shade-5: #605F5A;
+  --chart-shade-6: #484741;
 
   color-scheme: dark;
 }

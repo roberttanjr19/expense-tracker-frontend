@@ -46,7 +46,7 @@ function ColdStartLoader({ quietLabel, slow }: ColdStartLoaderProps) {
               <span className="loading-dot" />
             </div>
 
-            <p className="mt-6 text-[16px] font-semibold">Waking the server up</p>
+            <p className="mt-6 text-[16px] font-bold">Waking the server up</p>
             <p className="mt-2 max-w-[320px] text-[14px] text-dim">
               This can take up to a minute on the first visit. Hang tight.
             </p>
